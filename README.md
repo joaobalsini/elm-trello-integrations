@@ -26,7 +26,7 @@
 **But, first things first. How can you use and see whats happening here?**
 
 - clone this repo (and install elm if not installed).
-- npm install
+- npm install, when asked for sematic ui choose "Skip Install", and when asked "Where should we put Semantic UI inside your project?": dist/
 - elm-package install
 - Create firebase account and get firebase codes. To have this you will need to go to the firebase page, create a new project, enter the project and click "Add firebase to your web app" (or something like that), and then go to 5.
 
