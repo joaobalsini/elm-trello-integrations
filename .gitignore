@@ -57,3 +57,6 @@ dist/bundle.js
 
 #Firebase Config File
 dist/firebaseConfig.js
+
+#Trello client.js
+dist/client.js

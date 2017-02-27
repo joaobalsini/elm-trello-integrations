@@ -36,10 +36,142 @@
     src="https://code.jquery.com/jquery-3.1.1.min.js"
     integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
     crossorigin="anonymous"></script>
+    <script src="client.js"></script>
     <script src="semantic.min.js"></script>
 
     <script>
     var app = Elm.Main.fullscreen();
+
+    var successMessage = function(text)
+    {
+        message = {
+            messageClass: "positive",
+            header: "Success",
+            text: text,
+            active: true
+        }
+        app.ports.portMessage.send(message)
+    }
+
+    var errorMessage = function(text)
+    {
+        message = {
+            messageClass: "negative",
+            header: "Error",
+            text: text,
+            active: true
+        }
+        app.ports.portMessage.send(message)
+    }
+
+
+    app.ports.authorizeTrello.subscribe(function(){
+        Trello.authorize({
+          type: 'popup',
+          name: 'Elm Trello',
+          scope: {
+            read: 'true',
+            write: 'true' },
+          expiration: 'never',
+          success: function() { app.ports.trelloAuthorized.send("Trello successfully authorized!") },
+          error: function() { errorMessage("Authentication failed") }
+        })
+    });
+
+    app.ports.deauthorizeTrello.subscribe(function(){
+        Trello.deauthorize()
+    });
+
+    app.ports.loadBoards.subscribe(function() {
+        Trello.get(
+            '/members/me/boards/',
+            loadedBoards,
+            function() { console.log("Failed to load boards"); }
+        );
+    })
+
+    app.ports.loadLists.subscribe(function(boardId) {
+        Trello.get(
+            '/boards/'+boardId+"/lists?cards=open&card_fields=name",
+            loadedLists,
+            function() { console.log("Failed to load lists"); }
+        );
+    })
+
+    var loadedBoards = function(boards) {
+        var boardsArray = []
+        for(i = 0; i < boards.length ; i++)
+        {
+            var board = boards[i]
+
+            if(!board.closed)
+            {
+                boardsArray.push(
+                    {
+                        id: board.id,
+                        name: board.name,
+                        desc: board.desc,
+                        closed: board.closed,
+                        lists : []
+                    }
+                )
+            }
+
+        }
+
+        app.ports.boardsLoaded.send(boardsArray)
+        // app.ports.boardsLoaded.send(boards),
+    }
+
+    var loadedLists = function(lists) {
+        // console.log(lists)
+        var listsArray = []
+        var idBoard = lists.length > 0 ? lists[0].idBoard : ""
+        for(i = 0; i < lists.length ; i++)
+        {
+            var list = lists[i]
+            var cards = []
+
+            for(j=0; j<list.cards.length; j++)
+            {
+                var card = list.cards[j]
+                cards.push({
+                    id: card.id,
+                    name: card.name
+                })
+            }
+
+
+            listsArray.push(
+                {
+                    id: list.id,
+                    name: list.name,
+                    cards : cards
+                }
+            )
+
+
+        }
+
+        console.log({ trelloList: listsArray, boardId: idBoard })
+
+        app.ports.listsLoaded.send({ trelloList: listsArray, boardId: idBoard })
+        // app.ports.boardsLoaded.send(boards),
+    }
+
+
+    // var myList = "57bf6052835199ceee54009b";
+    // var creationSuccess = function(data) {
+    //   console.log('Card created successfully. Data returned:' + JSON.stringify(data));
+    // };
+    // var newCard = {
+    //   name: 'New Test Card',
+    //   desc: 'This is the description of our new card.',
+    //   // Place this card at the top of our list
+    //   idList: myList,
+    //   pos: 'top'
+    // };
+    // Trello.post('/cards/', newCard, creationSuccess);
 
     </script>
 </body>
