@@ -25,6 +25,56 @@
         margin: 5em 0em 0em;
         padding: 5em 0em;
     }
+
+    span.labels span
+    {
+        margin-left:5px;
+    }
+
+    span.labels span.green {
+        background-color:green;
+        color:green;
+    }
+
+    span.labels span.yellow {
+        background-color:yellow;
+        color:yellow;
+    }
+
+    span.labels span.orange {
+        background-color:orange;
+        color:orange;
+    }
+
+    span.labels span.red {
+        background-color:red;
+        color:red;
+    }
+
+    span.labels span.purple {
+        background-color:purple;
+        color:purple;
+    }
+
+    span.labels span.blue {
+        background-color:blue;
+        color:blue;
+    }
+
+    span.labels span.pink {
+        background-color:pink;
+        color:pink;
+    }
+
+    span.labels span.black {
+        background-color:black;
+        color:black;
+    }
+
+    span.labels span.gray {
+        background-color:gray;
+        color:gray;
+    }
     </style>
 </head>
 
@@ -92,7 +142,7 @@
 
     app.ports.loadLists.subscribe(function(boardId) {
         Trello.get(
-            '/boards/'+boardId+"/lists?cards=open&card_fields=name",
+            '/boards/'+boardId+"/lists?cards=open&card_fields=name&card_fields=labels",
             loadedLists,
             function() { console.log("Failed to load lists"); }
         );
@@ -111,7 +161,7 @@
                     if(name.length > 0)
                     {
                         labels.push({
-                            color: color,
+                            color: color ? color : "gray",
                             name: name
                         })
                     }
@@ -147,9 +197,21 @@
             for(j=0; j<list.cards.length; j++)
             {
                 var card = list.cards[j]
+                var labels = []
+
+                for(k=0; k < card.labels.length; k++)
+                {
+                    var label = card.labels[k]
+                    labels.push({
+                        color: label.color ? label.color : "gray",
+                        name: label.name
+                    })
+                }
+
                 cards.push({
                     id: card.id,
-                    name: card.name
+                    name: card.name,
+                    labels: labels
                 })
             }
 

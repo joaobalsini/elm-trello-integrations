@@ -14,6 +14,7 @@ type alias Model =
     { message : Maybe String
     , query : String
     , selectedBoard : Maybe Board
+    , selectedLabel : Maybe TrelloLabel
     }
 
 
@@ -22,6 +23,7 @@ initModel =
     { message = Nothing
     , query = ""
     , selectedBoard = Nothing
+    , selectedLabel = Nothing
     }
 
 
@@ -41,6 +43,8 @@ type Msg
     | LoadLists String
     | SelectBoard Board
     | UnselectBoard
+    | SelectLabel TrelloLabel
+    | UnselectLabel
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Message )
@@ -64,6 +68,12 @@ update msg model =
         UnselectBoard ->
             ( { model | selectedBoard = Nothing }, Cmd.none, initMessage )
 
+        SelectLabel label ->
+            ( { model | selectedLabel = Just label }, Cmd.none, initMessage )
+
+        UnselectLabel ->
+            ( { model | selectedLabel = Nothing }, Cmd.none, initMessage )
+
 
 
 -- view
@@ -83,7 +93,7 @@ view model boards =
                         ]
 
                 Just board ->
-                    showBoard board
+                    showBoard model board
     in
         renderedHtml
 
@@ -114,52 +124,79 @@ boardCard board =
         ]
 
 
-showBoard : Board -> Html Msg
-showBoard board =
-    div [ class "main" ]
-        [ h1 [ class "ui header" ] [ text ("Showing board " ++ board.name) ]
-        , h4 [] [ text "Labels" ]
-        , trelloLabelsAsCollumns board.labels
-        , div [ class "ui section divider" ] [ text "" ]
-        , h4 [] [ text "Lists" ]
-        , trelloListsAsCollumns board.lists
-        , div [ class "ui section divider" ] [ text "" ]
-        , a [ class "ui button", onClick (UnselectBoard) ] [ text "Show all boards" ]
-        ]
+showBoard : Model -> Board -> Html Msg
+showBoard model board =
+    let
+        paragraphSelectLabel =
+            case model.selectedLabel of
+                Nothing ->
+                    p [] [ text "Click at labels to select" ]
+
+                Just label ->
+                    p []
+                        [ a [ class "ui button small red", onClick UnselectLabel ] [ text "Clear selection" ]
+                        ]
+    in
+        div [ class "main" ]
+            [ h1 [ class "ui header" ] [ text ("Showing board " ++ board.name) ]
+            , h3 [] [ text "Labels" ]
+            , paragraphSelectLabel
+            , trelloLabelsAsCollumns model board.labels
+            , div [ class "ui section divider" ] [ text "" ]
+            , h3 [] [ text "Lists" ]
+            , trelloListsAsCollumns model board.lists
+            , div [ class "ui section divider" ] [ text "" ]
+            , a [ class "ui button", onClick (UnselectBoard) ] [ text "Show all boards" ]
+            ]
 
 
-trelloLabelsAsCollumns : List TrelloLabel -> Html Msg
-trelloLabelsAsCollumns list =
-    List.map trelloLabelAsCollumn list
+trelloLabelsAsCollumns : Model -> List TrelloLabel -> Html Msg
+trelloLabelsAsCollumns model list =
+    List.map (trelloLabelAsCollumn model) list
         |> div [ class "ui five column grid" ]
 
 
-trelloLabelAsCollumn : TrelloLabel -> Html Msg
-trelloLabelAsCollumn label =
-    div [ class "column" ]
-        [ div
-            [ class "ui segment" ]
-            [ div [ class "header" ] [ text label.color ]
-            , div [ class "content" ] [ text label.name ]
+trelloLabelAsCollumn : Model -> TrelloLabel -> Html Msg
+trelloLabelAsCollumn model label =
+    let
+        labelClass =
+            if model.selectedLabel == Just label then
+                "ui segment inverted " ++ label.color
+            else
+                "ui segment  " ++ label.color
+    in
+        div [ class "column", onClick (SelectLabel label) ]
+            [ div
+                [ class labelClass ]
+                [ div [ class "content" ] [ text label.name ] ]
             ]
-        ]
 
 
-trelloListsAsCollumns : List TrelloList -> Html Msg
-trelloListsAsCollumns list =
-    List.map trelloListAsCollumn list
+trelloListsAsCollumns : Model -> List TrelloList -> Html Msg
+trelloListsAsCollumns model list =
+    List.map (trelloListAsCollumn model) list
         |> div [ class "ui two column grid" ]
 
 
-trelloListAsCollumn : TrelloList -> Html Msg
-trelloListAsCollumn trelloList =
+trelloListAsCollumn : Model -> TrelloList -> Html Msg
+trelloListAsCollumn model trelloList =
     div [ class "column" ]
         [ div
             [ class "ui segment" ]
             [ div [ class "header" ] [ text trelloList.name ]
-            , cardsToList trelloList.cards
+            , cardsToList (List.filter (\card -> cardHasLabel card model.selectedLabel) trelloList.cards)
             ]
         ]
+
+
+cardHasLabel : TrelloCard -> Maybe TrelloLabel -> Bool
+cardHasLabel card maybeLabel =
+    case maybeLabel of
+        Nothing ->
+            True
+
+        Just maybeLabel ->
+            List.member maybeLabel card.labels
 
 
 trelloListList : List TrelloList -> String -> Html Msg
@@ -192,7 +229,21 @@ cardsToList cards =
 
 cardToLi : TrelloCard -> Html Msg
 cardToLi card =
-    li [] [ text card.name ]
+    li []
+        [ text card.name
+        , cardLabelsToSpans card.labels
+        ]
+
+
+cardLabelsToSpans : List TrelloLabel -> Html Msg
+cardLabelsToSpans labels =
+    List.map cardLabelToSpan labels
+        |> span [ class "labels" ]
+
+
+cardLabelToSpan : TrelloLabel -> Html Msg
+cardLabelToSpan label =
+    span [ class label.color, title label.name ] [ text "[  ]" ]
 
 
 searchForm : String -> Html Msg

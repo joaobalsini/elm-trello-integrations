@@ -13,7 +13,7 @@
 - [x] Index view - Reading and listing all boards, its lists e cards, from the current user
 - [x] Show board - Create board view - showing all lists and its cards in columns
 - [x] Show board - labels
-- [ ] Show board - filter by label
+- [x] Show board - filter by label
 - [ ] Show card - detailed information
 - [ ] Show card - attachments
 - [ ] Show card - custom field powerup
