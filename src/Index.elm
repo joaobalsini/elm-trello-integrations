@@ -159,7 +159,7 @@ trelloListToLi : TrelloList -> Html Msg
 trelloListToLi list =
     li []
         [ text list.name
-        , cardsToList list.cards
+          -- , cardsToList list.cards
         ]
 
 
