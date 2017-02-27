@@ -42,6 +42,12 @@ type alias TrelloListPlusBoardId =
     }
 
 
+type alias TrelloLabelPlusBoardId =
+    { trelloLabel : List TrelloLabel
+    , boardId : String
+    }
+
+
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
@@ -122,6 +128,7 @@ type Msg
     | LoadBoards
     | BoardsLoaded (List Board)
     | ListsLoaded TrelloListPlusBoardId
+    | LabelsLoaded TrelloLabelPlusBoardId
     | IndexMsg Index.Msg
     | LoginMsg Login.Msg
     | MessageMsg Message.Msg
@@ -137,6 +144,9 @@ port loadBoards : () -> Cmd msg
 
 
 port loadLists : String -> Cmd msg
+
+
+port loadLabels : String -> Cmd msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -175,8 +185,14 @@ update msg model =
 
         BoardsLoaded boards ->
             let
+                cmdsLoadList =
+                    (List.map (\board -> loadLists board.id) boards)
+
+                cmdsLoadLabels =
+                    (List.map (\board -> loadLabels board.id) boards)
+
                 cmds =
-                    Cmd.batch (List.map (\board -> loadLists board.id) boards)
+                    Cmd.batch (cmdsLoadList ++ cmdsLoadLabels)
             in
                 ( { model | boards = boards }, cmds )
 
@@ -201,6 +217,30 @@ update msg model =
                 , Cmd.none
                 )
 
+        LabelsLoaded { trelloLabel, boardId } ->
+            let
+                oldBoard =
+                    getBoardByIdFromList model.boards boardId
+
+                teste =
+                    Debug.log "labelsLoaded" boardId
+
+                newBoards =
+                    case oldBoard of
+                        Nothing ->
+                            model.boards
+
+                        Just board ->
+                            let
+                                updatedBoard =
+                                    { board | labels = trelloLabel }
+                            in
+                                List.map (updateBoardAtId updatedBoard boardId) model.boards
+            in
+                ( { model | boards = newBoards }
+                , Cmd.none
+                )
+
         IndexMsg msg ->
             case msg of
                 Index.LoadBoards ->
@@ -208,6 +248,12 @@ update msg model =
 
                 Index.LoadLists string ->
                     ( model, loadLists string )
+
+                Index.LoadLabels string ->
+                    ( model, loadLabels string )
+
+                Index.Authorize ->
+                    update Authorize model
 
                 _ ->
                     let
@@ -245,7 +291,7 @@ view model =
             case model.route of
                 IndexRoute ->
                     Html.map IndexMsg
-                        (Index.view model.index model.boards)
+                        (Index.view model.index model.boards model.trelloAuthorized)
 
                 LoginRoute ->
                     Html.map LoginMsg
@@ -293,6 +339,9 @@ port boardsLoaded : (List Board -> msg) -> Sub msg
 port listsLoaded : (TrelloListPlusBoardId -> msg) -> Sub msg
 
 
+port labelsLoaded : (TrelloLabelPlusBoardId -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
@@ -312,4 +361,5 @@ subscriptions model =
             , trelloAuthorized Authorized
             , boardsLoaded BoardsLoaded
             , listsLoaded ListsLoaded
+            , labelsLoaded LabelsLoaded
             ]

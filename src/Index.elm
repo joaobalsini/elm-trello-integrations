@@ -41,6 +41,8 @@ type Msg
     | Search
     | LoadBoards
     | LoadLists String
+    | LoadLabels String
+    | Authorize
     | SelectBoard Board
     | UnselectBoard
     | SelectLabel TrelloLabel
@@ -62,6 +64,12 @@ update msg model =
         LoadLists boardId ->
             ( model, Cmd.none, initMessage )
 
+        LoadLabels boardId ->
+            ( model, Cmd.none, initMessage )
+
+        Authorize ->
+            ( model, Cmd.none, initMessage )
+
         SelectBoard board ->
             ( { model | selectedBoard = Just board }, Cmd.none, initMessage )
 
@@ -79,15 +87,15 @@ update msg model =
 -- view
 
 
-view : Model -> List Board -> Html Msg
-view model boards =
+view : Model -> List Board -> Bool -> Html Msg
+view model boards authorized =
     let
         renderedHtml =
             case model.selectedBoard of
                 Nothing ->
                     div [ class "main" ]
                         [ h1 [ class "ui header" ] [ text "Boards" ]
-                        , boardsList boards
+                        , boardsList boards authorized
                         , div [ class "ui section divider" ] [ text "" ]
                         , searchForm model.query
                         ]
@@ -98,16 +106,16 @@ view model boards =
         renderedHtml
 
 
-boardsList : List Board -> Html Msg
-boardsList boards =
+boardsList : List Board -> Bool -> Html Msg
+boardsList boards authorized =
     let
         renderedHtml : Html Msg
         renderedHtml =
-            if List.length boards == 0 then
-                a [ class "ui button", onClick (LoadBoards) ] [ text "Load Boards" ]
-            else
+            if authorized then
                 List.map boardCard boards
                     |> div [ class "ui two column grid" ]
+            else
+                a [ class "ui button", onClick (Authorize) ] [ text "Authorize and load boards" ]
     in
         renderedHtml
 
@@ -117,7 +125,6 @@ boardCard board =
     div [ class "column" ]
         [ div [ class "ui segment" ]
             [ div [ class "header" ] [ text board.name ]
-            , div [ class "description" ] [ text board.desc ]
             , trelloListList board.lists board.id
             , a [ class "ui button", onClick (SelectBoard board) ] [ text "Select board" ]
             ]

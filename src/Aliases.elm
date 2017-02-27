@@ -4,7 +4,6 @@ module Aliases exposing (..)
 type alias Board =
     { id : String
     , name : String
-    , desc : String
     , lists : List TrelloList
     , labels : List TrelloLabel
     }
