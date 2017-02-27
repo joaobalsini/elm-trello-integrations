@@ -103,20 +103,32 @@
         for(i = 0; i < boards.length ; i++)
         {
             var board = boards[i]
+            var labels = []
 
             if(!board.closed)
             {
+                $.each( board.labelNames, function( color, name ) {
+                    if(name.length > 0)
+                    {
+                        labels.push({
+                            color: color,
+                            name: name
+                        })
+                    }
+                });
+
+
                 boardsArray.push(
                     {
                         id: board.id,
                         name: board.name,
                         desc: board.desc,
                         closed: board.closed,
-                        lists : []
+                        lists : [],
+                        labels : labels
                     }
                 )
             }
-
         }
 
         app.ports.boardsLoaded.send(boardsArray)

@@ -6,6 +6,7 @@ type alias Board =
     , name : String
     , desc : String
     , lists : List TrelloList
+    , labels : List TrelloLabel
     }
 
 
@@ -18,5 +19,11 @@ type alias TrelloList =
 
 type alias TrelloCard =
     { id : String
+    , name : String
+    }
+
+
+type alias TrelloLabel =
+    { color : String
     , name : String
     }

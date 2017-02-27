@@ -117,10 +117,31 @@ boardCard board =
 showBoard : Board -> Html Msg
 showBoard board =
     div [ class "main" ]
-        [ h1 [ class "ui header" ] [ text "Boards" ]
+        [ h1 [ class "ui header" ] [ text ("Showing board " ++ board.name) ]
+        , h4 [] [ text "Labels" ]
+        , trelloLabelsAsCollumns board.labels
+        , div [ class "ui section divider" ] [ text "" ]
+        , h4 [] [ text "Lists" ]
         , trelloListsAsCollumns board.lists
         , div [ class "ui section divider" ] [ text "" ]
         , a [ class "ui button", onClick (UnselectBoard) ] [ text "Show all boards" ]
+        ]
+
+
+trelloLabelsAsCollumns : List TrelloLabel -> Html Msg
+trelloLabelsAsCollumns list =
+    List.map trelloLabelAsCollumn list
+        |> div [ class "ui five column grid" ]
+
+
+trelloLabelAsCollumn : TrelloLabel -> Html Msg
+trelloLabelAsCollumn label =
+    div [ class "column" ]
+        [ div
+            [ class "ui segment" ]
+            [ div [ class "header" ] [ text label.color ]
+            , div [ class "content" ] [ text label.name ]
+            ]
         ]
 
 
