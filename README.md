@@ -11,7 +11,7 @@
 - [x] Creating basic trello authorization using client.js (from trello)
 - [x] Load open boards for the current user
 - [x] Index view - Reading and listing all boards, its lists e cards, from the current user
-- [ ] Show board - Create board view - showing all lists and its cards in columns
+- [x] Show board - Create board view - showing all lists and its cards in columns
 - [ ] Show board - tags
 - [ ] Show board - filter by tags
 - [ ] Show card - detailed information

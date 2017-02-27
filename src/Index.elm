@@ -13,6 +13,7 @@ import Message exposing (..)
 type alias Model =
     { message : Maybe String
     , query : String
+    , selectedBoard : Maybe Board
     }
 
 
@@ -20,6 +21,7 @@ initModel : Model
 initModel =
     { message = Nothing
     , query = ""
+    , selectedBoard = Nothing
     }
 
 
@@ -37,6 +39,8 @@ type Msg
     | Search
     | LoadBoards
     | LoadLists String
+    | SelectBoard Board
+    | UnselectBoard
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Message )
@@ -54,6 +58,12 @@ update msg model =
         LoadLists boardId ->
             ( model, Cmd.none, initMessage )
 
+        SelectBoard board ->
+            ( { model | selectedBoard = Just board }, Cmd.none, initMessage )
+
+        UnselectBoard ->
+            ( { model | selectedBoard = Nothing }, Cmd.none, initMessage )
+
 
 
 -- view
@@ -61,12 +71,21 @@ update msg model =
 
 view : Model -> List Board -> Html Msg
 view model boards =
-    div [ class "main" ]
-        [ h1 [ class "ui header" ] [ text "Boards" ]
-        , boardsList boards
-        , div [ class "ui section divider" ] [ text "" ]
-        , searchForm model.query
-        ]
+    let
+        renderedHtml =
+            case model.selectedBoard of
+                Nothing ->
+                    div [ class "main" ]
+                        [ h1 [ class "ui header" ] [ text "Boards" ]
+                        , boardsList boards
+                        , div [ class "ui section divider" ] [ text "" ]
+                        , searchForm model.query
+                        ]
+
+                Just board ->
+                    showBoard board
+    in
+        renderedHtml
 
 
 boardsList : List Board -> Html Msg
@@ -83,22 +102,61 @@ boardsList boards =
         renderedHtml
 
 
-listsList : List TrelloList -> String -> Html Msg
-listsList lists boardId =
+boardCard : Board -> Html Msg
+boardCard board =
+    div [ class "column" ]
+        [ div [ class "ui segment" ]
+            [ div [ class "header" ] [ text board.name ]
+            , div [ class "description" ] [ text board.desc ]
+            , trelloListList board.lists board.id
+            , a [ class "ui button", onClick (SelectBoard board) ] [ text "Select board" ]
+            ]
+        ]
+
+
+showBoard : Board -> Html Msg
+showBoard board =
+    div [ class "main" ]
+        [ h1 [ class "ui header" ] [ text "Boards" ]
+        , trelloListsAsCollumns board.lists
+        , div [ class "ui section divider" ] [ text "" ]
+        , a [ class "ui button", onClick (UnselectBoard) ] [ text "Show all boards" ]
+        ]
+
+
+trelloListsAsCollumns : List TrelloList -> Html Msg
+trelloListsAsCollumns list =
+    List.map trelloListAsCollumn list
+        |> div [ class "ui two column grid" ]
+
+
+trelloListAsCollumn : TrelloList -> Html Msg
+trelloListAsCollumn trelloList =
+    div [ class "column" ]
+        [ div
+            [ class "ui segment" ]
+            [ div [ class "header" ] [ text trelloList.name ]
+            , cardsToList trelloList.cards
+            ]
+        ]
+
+
+trelloListList : List TrelloList -> String -> Html Msg
+trelloListList lists boardId =
     let
         renderedHtml : Html Msg
         renderedHtml =
             if List.length lists == 0 then
                 a [ class "ui button", onClick (LoadLists boardId) ] [ text "Load Lists" ]
             else
-                List.map listToLi lists
+                List.map trelloListToLi lists
                     |> ul []
     in
         renderedHtml
 
 
-listToLi : TrelloList -> Html Msg
-listToLi list =
+trelloListToLi : TrelloList -> Html Msg
+trelloListToLi list =
     li []
         [ text list.name
         , cardsToList list.cards
@@ -114,30 +172,6 @@ cardsToList cards =
 cardToLi : TrelloCard -> Html Msg
 cardToLi card =
     li [] [ text card.name ]
-
-
-boardCard : Board -> Html Msg
-boardCard board =
-    div [ class "column" ]
-        [ div [ class "ui segment" ]
-            [ div [ class "header" ] [ text board.name ]
-            , div [ class "description" ] [ text board.desc ]
-            , listsList board.lists board.id
-            ]
-        ]
-
-
-messagePanel : Maybe String -> Html a
-messagePanel message =
-    case message of
-        Nothing ->
-            text ""
-
-        Just msg ->
-            div [ class "error" ]
-                [ text msg
-                , button [ type_ "button" ] [ text "×" ]
-                ]
 
 
 searchForm : String -> Html Msg
