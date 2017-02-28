@@ -236,10 +236,19 @@ cardsToList cards =
 
 cardToLi : TrelloCard -> Html Msg
 cardToLi card =
-    li []
-        [ text card.name
-        , cardLabelsToSpans card.labels
-        ]
+    let
+        namePlusId =
+            case card.taskId of
+                Nothing ->
+                    card.name
+
+                Just taskId ->
+                    card.name ++ " [taskId= " ++ taskId ++ "]"
+    in
+        li []
+            [ text namePlusId
+            , cardLabelsToSpans card.labels
+            ]
 
 
 cardLabelsToSpans : List TrelloLabel -> Html Msg

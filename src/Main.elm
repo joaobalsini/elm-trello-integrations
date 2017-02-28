@@ -222,9 +222,6 @@ update msg model =
                 oldBoard =
                     getBoardByIdFromList model.boards boardId
 
-                teste =
-                    Debug.log "labelsLoaded" boardId
-
                 newBoards =
                     case oldBoard of
                         Nothing ->

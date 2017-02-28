@@ -134,7 +134,7 @@
 
     app.ports.loadBoards.subscribe(function() {
         Trello.get(
-            '/members/me/boards/?filter=open&fields=id&fields=name',
+            '/members/me/boards/?filter=open',
             loadedBoards,
             function() { console.log("Failed to load boards"); }
         );
@@ -142,7 +142,7 @@
 
     app.ports.loadLists.subscribe(function(boardId) {
         Trello.get(
-            '/boards/'+boardId+"/lists?cards=open&card_fields=name&card_fields=labels",
+            '/boards/'+boardId+"/lists?cards=open",
             loadedLists,
             function() { console.log("Failed to load lists"); }
         );
@@ -163,7 +163,10 @@
             var board = boards[i]
             var labels = []
 
-
+            if(board.id == "5728a464125d32598f5021f9")
+            {
+                console.log('board', board)
+            }
 
             boardsArray.push(
                 {
@@ -183,6 +186,10 @@
         // console.log(lists)
         var listsArray = []
         var idBoard = lists.length > 0 ? lists[0].idBoard : ""
+        var regexTaskId = /\[TaskID=(.*)\]/u;
+
+        var m;
+
         for(i = 0; i < lists.length ; i++)
         {
             var list = lists[i]
@@ -192,6 +199,9 @@
             {
                 var card = list.cards[j]
                 var labels = []
+                var taskId = null
+
+
 
                 for(k=0; k < card.labels.length; k++)
                 {
@@ -202,9 +212,15 @@
                     })
                 }
 
+                if ((m = regexTaskId.exec(card.desc)) !== null) {
+                    taskId = m[1]
+                }
+
                 cards.push({
                     id: card.id,
                     name: card.name,
+                    desc: card.desc,
+                    taskId: taskId,
                     labels: labels
                 })
             }
@@ -223,7 +239,7 @@
 
         if(idBoard == "5728a464125d32598f5021f9")
         {
-            console.log({ trelloList: listsArray, boardId: idBoard })
+            //console.log({ trelloList: listsArray, boardId: idBoard })
         }
 
         app.ports.listsLoaded.send({ trelloList: listsArray, boardId: idBoard })

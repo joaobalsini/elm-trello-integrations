@@ -18,7 +18,9 @@ type alias TrelloList =
 
 type alias TrelloCard =
     { id : String
+    , taskId : Maybe String
     , name : String
+    , desc : String
     , labels : List TrelloLabel
     }
 
