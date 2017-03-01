@@ -143,12 +143,6 @@ port deauthorizeTrello : () -> Cmd msg
 port loadBoards : () -> Cmd msg
 
 
-port loadLists : String -> Cmd msg
-
-
-port loadLabels : String -> Cmd msg
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -184,36 +178,44 @@ update msg model =
                 ( { model | message = errorMessage "You should authorize trello first" }, Cmd.none )
 
         BoardsLoaded boards ->
-            let
-                cmdsLoadList =
-                    (List.map (\board -> loadLists board.id) boards)
-
-                cmdsLoadLabels =
-                    (List.map (\board -> loadLabels board.id) boards)
-
-                cmds =
-                    Cmd.batch (cmdsLoadList ++ cmdsLoadLabels)
-            in
-                ( { model | boards = boards }, cmds )
+            ( { model | boards = boards }, Cmd.none )
 
         ListsLoaded { trelloList, boardId } ->
             let
                 oldBoard =
                     getBoardByIdFromList model.boards boardId
 
-                newBoards =
+                -- update boards list and selectedBoard
+                ( newBoards, selectedBoard ) =
                     case oldBoard of
                         Nothing ->
-                            model.boards
+                            ( model.boards, Nothing )
 
                         Just board ->
                             let
                                 updatedBoard =
                                     { board | lists = trelloList }
+
+                                selectedBoard =
+                                    case model.index.selectedBoard of
+                                        Nothing ->
+                                            model.index.selectedBoard
+
+                                        Just board ->
+                                            if board.id == boardId then
+                                                Just updatedBoard
+                                            else
+                                                Just board
                             in
-                                List.map (updateBoardAtId updatedBoard boardId) model.boards
+                                ( List.map (updateBoardAtId updatedBoard boardId) model.boards, selectedBoard )
+
+                currentIndex =
+                    model.index
+
+                updatedIndex =
+                    { currentIndex | selectedBoard = selectedBoard }
             in
-                ( { model | boards = newBoards }
+                ( { model | boards = newBoards, index = updatedIndex }
                 , Cmd.none
                 )
 
@@ -222,19 +224,37 @@ update msg model =
                 oldBoard =
                     getBoardByIdFromList model.boards boardId
 
-                newBoards =
+                -- update boards labels and selectedBoard
+                ( newBoards, selectedBoard ) =
                     case oldBoard of
                         Nothing ->
-                            model.boards
+                            ( model.boards, Nothing )
 
                         Just board ->
                             let
                                 updatedBoard =
                                     { board | labels = trelloLabel }
+
+                                selectedBoard =
+                                    case model.index.selectedBoard of
+                                        Nothing ->
+                                            model.index.selectedBoard
+
+                                        Just board ->
+                                            if board.id == boardId then
+                                                Just updatedBoard
+                                            else
+                                                Just board
                             in
-                                List.map (updateBoardAtId updatedBoard boardId) model.boards
+                                ( List.map (updateBoardAtId updatedBoard boardId) model.boards, selectedBoard )
+
+                currentIndex =
+                    model.index
+
+                updatedIndex =
+                    { currentIndex | selectedBoard = selectedBoard }
             in
-                ( { model | boards = newBoards }
+                ( { model | boards = newBoards, index = updatedIndex }
                 , Cmd.none
                 )
 
@@ -242,12 +262,6 @@ update msg model =
             case msg of
                 Index.LoadBoards ->
                     update LoadBoards model
-
-                Index.LoadLists string ->
-                    ( model, loadLists string )
-
-                Index.LoadLabels string ->
-                    ( model, loadLabels string )
 
                 Index.Authorize ->
                     update Authorize model

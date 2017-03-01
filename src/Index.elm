@@ -42,8 +42,6 @@ type Msg
     = SearchInput String
     | Search
     | LoadBoards
-    | LoadLists String
-    | LoadLabels String
     | Authorize
     | SelectBoard Board
     | UnselectBoard
@@ -51,6 +49,12 @@ type Msg
     | UnselectLabel
     | SelectCard TrelloCard
     | UnselectCard
+
+
+port loadLists : String -> Cmd msg
+
+
+port loadLabels : String -> Cmd msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Message )
@@ -65,17 +69,15 @@ update msg model =
         LoadBoards ->
             ( model, Cmd.none, initMessage )
 
-        LoadLists boardId ->
-            ( model, Cmd.none, initMessage )
-
-        LoadLabels boardId ->
-            ( model, Cmd.none, initMessage )
-
         Authorize ->
             ( model, Cmd.none, initMessage )
 
         SelectBoard board ->
-            ( { model | selectedBoard = Just board }, Cmd.none, initMessage )
+            let
+                cmds =
+                    Cmd.batch [ loadLists board.id, loadLabels board.id ]
+            in
+                ( { model | selectedBoard = Just board }, cmds, initMessage )
 
         UnselectBoard ->
             ( { model | selectedBoard = Nothing }, Cmd.none, initMessage )
@@ -101,38 +103,33 @@ view : Model -> List Board -> Bool -> Html Msg
 view model boards authorized =
     let
         renderedHtml =
-            case model.selectedCard of
-                Nothing ->
-                    case model.selectedBoard of
-                        Nothing ->
-                            div [ class "main" ]
-                                [ h1 [ class "ui header" ] [ text "Boards" ]
-                                , boardsList boards authorized
-                                , div [ class "ui section divider" ] [ text "" ]
-                                , searchForm model.query
-                                ]
+            if authorized then
+                case model.selectedCard of
+                    Nothing ->
+                        case model.selectedBoard of
+                            Nothing ->
+                                div [ class "main" ]
+                                    [ h1 [ class "ui header" ] [ text "Boards" ]
+                                    , boardsList boards authorized
+                                    , div [ class "ui section divider" ] [ text "" ]
+                                    , searchForm model.query
+                                    ]
 
-                        Just board ->
-                            showBoard model board
+                            Just board ->
+                                showBoard model board
 
-                Just card ->
-                    showCard model card
+                    Just card ->
+                        showCard model card
+            else
+                a [ class "ui button", onClick (Authorize) ] [ text "Authorize and load boards" ]
     in
         renderedHtml
 
 
 boardsList : List Board -> Bool -> Html Msg
 boardsList boards authorized =
-    let
-        renderedHtml : Html Msg
-        renderedHtml =
-            if authorized then
-                List.map boardCard boards
-                    |> div [ class "ui two column grid" ]
-            else
-                a [ class "ui button", onClick (Authorize) ] [ text "Authorize and load boards" ]
-    in
-        renderedHtml
+    List.map boardCard boards
+        |> div [ class "ui two column grid" ]
 
 
 boardCard : Board -> Html Msg
@@ -140,7 +137,6 @@ boardCard board =
     div [ class "column" ]
         [ div [ class "ui segment" ]
             [ div [ class "header" ] [ text board.name ]
-            , trelloListList board.lists board.id
             , a [ class "ui button", onClick (SelectBoard board) ] [ text "Select board" ]
             ]
         ]
@@ -266,11 +262,8 @@ trelloListList lists boardId =
     let
         renderedHtml : Html Msg
         renderedHtml =
-            if List.length lists == 0 then
-                a [ class "ui button", onClick (LoadLists boardId) ] [ text "Load Lists" ]
-            else
-                List.map trelloListToLi lists
-                    |> ul []
+            List.map trelloListToLi lists
+                |> ul []
     in
         renderedHtml
 
