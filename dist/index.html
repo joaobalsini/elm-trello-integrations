@@ -163,10 +163,10 @@
             var board = boards[i]
             var labels = []
 
-            if(board.id == "5728a464125d32598f5021f9")
-            {
-                console.log('board', board)
-            }
+            // if(board.id == "5728a464125d32598f5021f9")
+            // {
+            //     console.log('board', board)
+            // }
 
             boardsArray.push(
                 {
@@ -201,7 +201,15 @@
                 var labels = []
                 var taskId = null
 
+                // if(card.id == "58b43d2b697a4925996fd9ce")
+                // {
+                //     console.log('card', card.name, card)
+                // }
 
+                // if(idBoard == "5728a464125d32598f5021f9")
+                // {
+                //     console.log('cards',list.cards)
+                // }
 
                 for(k=0; k < card.labels.length; k++)
                 {
@@ -237,10 +245,10 @@
 
         }
 
-        if(idBoard == "5728a464125d32598f5021f9")
-        {
-            //console.log({ trelloList: listsArray, boardId: idBoard })
-        }
+        //  if(idBoard == "5728a464125d32598f5021f9")
+        //  {
+        //      console.log({ trelloList: listsArray, boardId: idBoard })
+        //  }
 
         app.ports.listsLoaded.send({ trelloList: listsArray, boardId: idBoard })
         // app.ports.boardsLoaded.send(boards),
@@ -267,10 +275,10 @@
 
         }
 
-        if(idBoard == "5728a464125d32598f5021f9")
-        {
-            console.log({ trelloLabel: labelsArray, boardId: idBoard })
-        }
+        // if(idBoard == "5728a464125d32598f5021f9")
+        // {
+        //     console.log({ trelloLabel: labelsArray, boardId: idBoard })
+        // }
         app.ports.labelsLoaded.send({ trelloLabel: labelsArray, boardId: idBoard })
         // app.ports.boardsLoaded.send(boards),
     }

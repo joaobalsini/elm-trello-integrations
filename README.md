@@ -15,7 +15,7 @@
 - [x] Show board - labels
 - [x] Show board - filter by label
 - [x] Define strategy for integration
-- [ ] Show card - detailed information
+- [x] Show card - detailed information
 - [ ] Show card - attachments
 - [ ] Create cards in elm directly to the trello board
 - [ ] Cards sync 1 - save cards actual state in database
