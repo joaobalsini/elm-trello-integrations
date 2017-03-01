@@ -6,6 +6,8 @@
 
 **There are many use cases for this. For example, what if an app wants to use a trello board as a LOW LEVEL management resource and an ELM APP as a HIGH LEVEL management resoure. For example, in planning, one can create a big task in elm and create subtasks in trello. It would be useful if, and only if, we can automate stuff.
 
+** Please view the video to see what this app does: http://recordit.co/ao478UJaUp **
+
 **Task list**
 - [x] Create Basic interface for showing cards data (maybe as cards also)
 - [x] Creating basic trello authorization using client.js (from trello)

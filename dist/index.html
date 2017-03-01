@@ -292,7 +292,6 @@
     }
 
     var loadedCard = function(serverCard) {
-        console.log(serverCard)
 
         var labels = []
         var attachments = []
@@ -335,7 +334,7 @@
             labels: labels,
             attachments: attachments
         }
-    
+
         app.ports.cardLoaded.send({ trelloCard: localCard, boardId: boardId, listId: listId })
         // app.ports.boardsLoaded.send(boards),
     }
