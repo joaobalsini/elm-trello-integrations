@@ -57,6 +57,9 @@ port loadLists : String -> Cmd msg
 port loadLabels : String -> Cmd msg
 
 
+port loadCard : String -> Cmd msg
+
+
 update : Msg -> Model -> ( Model, Cmd Msg, Message )
 update msg model =
     case msg of
@@ -89,7 +92,7 @@ update msg model =
             ( { model | selectedLabel = Nothing }, Cmd.none, initMessage )
 
         SelectCard card ->
-            ( { model | selectedCard = Just card }, Cmd.none, initMessage )
+            ( { model | selectedCard = Just card }, loadCard card.id, initMessage )
 
         UnselectCard ->
             ( { model | selectedCard = Nothing }, Cmd.none, initMessage )
@@ -189,6 +192,8 @@ showCard model card =
             , referalTask
             , h3 [] [ text "Labels" ]
             , trelloLabelsAsCollumns model False card.labels
+            , h3 [] [ text "Attachments" ]
+            , trelloAttachmentsAsCollumns card.attachments
             , h3 [] [ text "Description" ]
             , p [] [ text card.desc ]
             , a [ class "ui button", onClick (UnselectCard) ] [ text "Show all cards" ]
@@ -228,6 +233,30 @@ trelloLabelAsCollumn model canSelect label =
                 [ class labelClass ]
                 [ div [ class "content" ] [ text label.name ] ]
             ]
+
+
+trelloAttachmentsAsCollumns : List TrelloAttachment -> Html Msg
+trelloAttachmentsAsCollumns list =
+    let
+        renderedListOrEmptyMessage =
+            if List.isEmpty list then
+                p [] [ text "No attachments" ]
+            else
+                List.map (trelloAttachmentsAsCollumn) list
+                    |> div [ class "ui five column grid" ]
+    in
+        renderedListOrEmptyMessage
+
+
+trelloAttachmentsAsCollumn : TrelloAttachment -> Html Msg
+trelloAttachmentsAsCollumn attachment =
+    div []
+        [ div
+            [ class "ui segment" ]
+            [ div [ class "content" ]
+                [ a [ href attachment.url ] [ text attachment.name ] ]
+            ]
+        ]
 
 
 trelloListsAsCollumns : Model -> List TrelloList -> Html Msg

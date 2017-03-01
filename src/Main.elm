@@ -48,6 +48,13 @@ type alias TrelloLabelPlusBoardId =
     }
 
 
+type alias TrelloCardPlusListIdPlusBoardId =
+    { trelloCard : TrelloCard
+    , listId : String
+    , boardId : String
+    }
+
+
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
@@ -107,8 +114,50 @@ getBoardByIdFromList list id =
                 getBoardByIdFromList xs id
 
 
+getTrelloListByIdFromList : List TrelloList -> String -> Maybe TrelloList
+getTrelloListByIdFromList list id =
+    case list of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            if x.id == id then
+                Just x
+            else
+                getTrelloListByIdFromList xs id
+
+
+getTrelloCardByIdFromList : List TrelloCard -> String -> Maybe TrelloCard
+getTrelloCardByIdFromList list id =
+    case list of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            if x.id == id then
+                Just x
+            else
+                getTrelloCardByIdFromList xs id
+
+
 updateBoardAtId : Board -> String -> Board -> Board
 updateBoardAtId updatedElement elementId originalElement =
+    if originalElement.id == elementId then
+        updatedElement
+    else
+        originalElement
+
+
+updateTrelloListAtId : TrelloList -> String -> TrelloList -> TrelloList
+updateTrelloListAtId updatedElement elementId originalElement =
+    if originalElement.id == elementId then
+        updatedElement
+    else
+        originalElement
+
+
+updateTrelloCardAtId : TrelloCard -> String -> TrelloCard -> TrelloCard
+updateTrelloCardAtId updatedElement elementId originalElement =
     if originalElement.id == elementId then
         updatedElement
     else
@@ -129,6 +178,7 @@ type Msg
     | BoardsLoaded (List Board)
     | ListsLoaded TrelloListPlusBoardId
     | LabelsLoaded TrelloLabelPlusBoardId
+    | CardLoaded TrelloCardPlusListIdPlusBoardId
     | IndexMsg Index.Msg
     | LoginMsg Login.Msg
     | MessageMsg Message.Msg
@@ -258,6 +308,75 @@ update msg model =
                 , Cmd.none
                 )
 
+        CardLoaded { trelloCard, listId, boardId } ->
+            -- here we need to update the list in the List TrelloList inside Board
+            -- and then Board inside List Board
+            let
+                oldBoard =
+                    getBoardByIdFromList model.boards boardId
+
+                ( newBoards, selectedBoard, selectedCard ) =
+                    case oldBoard of
+                        Nothing ->
+                            ( model.boards, Nothing, Nothing )
+
+                        Just board ->
+                            let
+                                oldList =
+                                    getTrelloListByIdFromList board.lists listId
+                            in
+                                case oldList of
+                                    Nothing ->
+                                        ( model.boards, Nothing, Nothing )
+
+                                    Just list ->
+                                        let
+                                            updatedList =
+                                                { list | cards = List.map (updateTrelloCardAtId trelloCard trelloCard.id) list.cards }
+
+                                            newLists =
+                                                List.map (updateTrelloListAtId updatedList listId) board.lists
+
+                                            updatedBoard =
+                                                { board | lists = newLists }
+
+                                            selectedBoard =
+                                                case model.index.selectedBoard of
+                                                    Nothing ->
+                                                        model.index.selectedBoard
+
+                                                    Just board ->
+                                                        if board.id == boardId then
+                                                            Just updatedBoard
+                                                        else
+                                                            Just board
+
+                                            selectedCard =
+                                                case model.index.selectedCard of
+                                                    Nothing ->
+                                                        model.index.selectedCard
+
+                                                    Just card ->
+                                                        if card.id == trelloCard.id then
+                                                            Just trelloCard
+                                                        else
+                                                            Just card
+
+                                            newBoards =
+                                                List.map (updateBoardAtId updatedBoard boardId) model.boards
+                                        in
+                                            ( newBoards, selectedBoard, selectedCard )
+
+                currentIndex =
+                    model.index
+
+                updatedIndex =
+                    { currentIndex | selectedBoard = selectedBoard, selectedCard = selectedCard }
+            in
+                ( { model | boards = newBoards, index = updatedIndex }
+                , Cmd.none
+                )
+
         IndexMsg msg ->
             case msg of
                 Index.LoadBoards ->
@@ -353,6 +472,9 @@ port listsLoaded : (TrelloListPlusBoardId -> msg) -> Sub msg
 port labelsLoaded : (TrelloLabelPlusBoardId -> msg) -> Sub msg
 
 
+port cardLoaded : (TrelloCardPlusListIdPlusBoardId -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
@@ -373,4 +495,5 @@ subscriptions model =
             , boardsLoaded BoardsLoaded
             , listsLoaded ListsLoaded
             , labelsLoaded LabelsLoaded
+            , cardLoaded CardLoaded
             ]

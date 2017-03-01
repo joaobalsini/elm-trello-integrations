@@ -148,6 +148,14 @@
         );
     })
 
+    app.ports.loadCard.subscribe(function(cardId) {
+        Trello.get(
+            '/cards/'+cardId+"?attachments=true",
+            loadedCard,
+            function() { console.log("Failed to load card"); }
+        );
+    })
+
     app.ports.loadLabels.subscribe(function(boardId) {
         Trello.get(
             '/boards/'+boardId+"/labels",
@@ -229,7 +237,8 @@
                     name: card.name,
                     desc: card.desc,
                     taskId: taskId,
-                    labels: labels
+                    labels: labels,
+                    attachments : []
                 })
             }
 
@@ -261,7 +270,6 @@
         for(i = 0; i < labels.length ; i++)
         {
             var label = labels[i]
-            var cards = []
 
             if(label.name.length > 0)
             {
@@ -280,6 +288,55 @@
         //     console.log({ trelloLabel: labelsArray, boardId: idBoard })
         // }
         app.ports.labelsLoaded.send({ trelloLabel: labelsArray, boardId: idBoard })
+        // app.ports.boardsLoaded.send(boards),
+    }
+
+    var loadedCard = function(serverCard) {
+        console.log(serverCard)
+
+        var labels = []
+        var attachments = []
+
+        var regexTaskId = /\[TaskID=(.*)\]/u;
+        var m;
+        var taskId = null;
+        var listId = serverCard.idList
+        var boardId = serverCard.idBoard
+
+
+        for(k=0; k < serverCard.labels.length; k++)
+        {
+            var label = serverCard.labels[k]
+            labels.push({
+                color: label.color ? label.color : "gray",
+                name: label.name
+            })
+        }
+
+        for(k=0; k < serverCard.attachments.length; k++)
+        {
+            var attachment = serverCard.attachments[k]
+            attachments.push({
+                name: attachment.name,
+                url: attachment.url
+            })
+        }
+
+        if ((m = regexTaskId.exec(serverCard.desc)) !== null) {
+            taskId = m[1]
+        }
+
+
+        var localCard = {
+            id: serverCard.id,
+            name: serverCard.name,
+            desc: serverCard.desc,
+            taskId: taskId,
+            labels: labels,
+            attachments: attachments
+        }
+    
+        app.ports.cardLoaded.send({ trelloCard: localCard, boardId: boardId, listId: listId })
         // app.ports.boardsLoaded.send(boards),
     }
 

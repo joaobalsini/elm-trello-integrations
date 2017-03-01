@@ -22,6 +22,13 @@ type alias TrelloCard =
     , name : String
     , desc : String
     , labels : List TrelloLabel
+    , attachments : List TrelloAttachment
+    }
+
+
+type alias TrelloAttachment =
+    { name : String
+    , url : String
     }
 
 
