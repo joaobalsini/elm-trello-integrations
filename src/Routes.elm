@@ -5,8 +5,7 @@ import UrlParser as Url exposing ((</>), (<?>), top)
 
 
 type Route
-    = IndexRoute
-    | LoginRoute
+    = TrelloBoardRoute
     | ActivityRoute
     | ActivityGroupRoute
     | NotFoundRoute
@@ -15,7 +14,7 @@ type Route
 routeToHash : Route -> String
 routeToHash route =
     case route of
-        IndexRoute ->
+        TrelloBoardRoute ->
             "#/"
 
         ActivityRoute ->
@@ -24,9 +23,6 @@ routeToHash route =
         ActivityGroupRoute ->
             "#/activityGroups"
 
-        LoginRoute ->
-            "#/login"
-
         NotFoundRoute ->
             "#notfound"
 
@@ -34,10 +30,9 @@ routeToHash route =
 matchers : Url.Parser (Route -> a) a
 matchers =
     Url.oneOf
-        [ Url.map IndexRoute top
+        [ Url.map TrelloBoardRoute top
         , Url.map ActivityRoute (Url.s "activities")
         , Url.map ActivityGroupRoute (Url.s "activityGroups")
-        , Url.map LoginRoute (Url.s "login")
         ]
 
 

@@ -29,6 +29,7 @@ type alias Model =
     , activity : Activity
     , redirectRoute : Route
     , showingForm : Bool
+    , waitingServerConfirmation : Bool
     }
 
 
@@ -45,8 +46,9 @@ initModel =
     , activityGroupIdError = Nothing
     , activity = initActivity
     , showErrorPanel = False
-    , redirectRoute = IndexRoute
+    , redirectRoute = TrelloBoardRoute
     , showingForm = False
+    , waitingServerConfirmation = False
     }
 
 
@@ -212,9 +214,6 @@ update msg model =
                         Just activityGroup ->
                             activityGroup.id
 
-                teste =
-                    Debug.log "activityGroupId" activityGroupId
-
                 newActivity =
                     { initActivity | activityGroupId = activityGroupId }
             in
@@ -257,16 +256,37 @@ update msg model =
                 ( { model | name = activity.name, startDate = formattedStartDate, endDate = formattedEndDate, activityGroupId = activity.activityGroupId, activity = activity, showingForm = True }, Cmd.none, initMessage )
 
         RemoveActivity activity ->
-            ( initModel, removeActivity activity, initMessage )
+            ( { initModel | waitingServerConfirmation = True }, removeActivity activity, initMessage )
 
         ActivityAdded activity ->
-            ( model, Cmd.none, Message.successMessage "Activity successfully added" )
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "Activity successfully added"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
         ActivityUpdated activity ->
-            ( model, Cmd.none, Message.successMessage "Activity successfully updated" )
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "Activity successfully updated"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
         ActivityRemoved id ->
-            ( model, Cmd.none, Message.successMessage "Activity successfully removed" )
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "Activity successfully removed"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
         Submit ->
             let
@@ -291,9 +311,9 @@ update msg model =
                     if showError then
                         ( { model4 | showErrorPanel = True }, Cmd.none )
                     else if model.activity.id == "" then
-                        ( initModel, addActivity model.activity )
+                        ( { initModel | waitingServerConfirmation = True }, addActivity model.activity )
                     else
-                        ( initModel, updateActivity model.activity )
+                        ( { initModel | waitingServerConfirmation = True }, updateActivity model.activity )
             in
                 ( updatedModel, cmd, initMessage )
 
@@ -333,7 +353,7 @@ activityTable model activities activityGroups =
             if List.isEmpty activities then
                 div [] [ text "No activity found!" ]
             else
-                List.map (activityToTr) activities
+                List.map (activityToTr activityGroups) activities
                     |> tbody []
                     |> (\r -> activitiesTh :: [ r ])
                     |> table [ class "ui celled table" ]
@@ -358,8 +378,21 @@ activitiesTh =
         ]
 
 
-activityToTr : Activity -> Html Msg
-activityToTr activity =
+getActivityGroupByIdFromList : List ActivityGroup -> String -> Maybe ActivityGroup
+getActivityGroupByIdFromList list id =
+    case list of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            if x.id == id then
+                Just x
+            else
+                getActivityGroupByIdFromList xs id
+
+
+activityToTr : List ActivityGroup -> Activity -> Html Msg
+activityToTr activityGroups activity =
     let
         formattedStartDate =
             case activity.startDate of
@@ -386,13 +419,21 @@ activityToTr activity =
 
                         Just date ->
                             DateExtra.toFormattedString "dd/MM/y" date
+
+        activityGroupName =
+            case (getActivityGroupByIdFromList activityGroups activity.activityGroupId) of
+                Nothing ->
+                    "ActivityGroup with id " ++ activity.activityGroupId ++ " not found!!!"
+
+                Just activityGroup ->
+                    activityGroup.name
     in
         tr []
             [ td [] [ text activity.id ]
             , td [] [ text activity.name ]
             , td [] [ text formattedStartDate ]
             , td [] [ text formattedEndDate ]
-            , td [] [ text activity.activityGroupId ]
+            , td [] [ text activityGroupName ]
             , td []
                 [ button [ class "ui button", onClick (EditActivity activity) ] [ text "Edit" ]
                 , button [ class "ui button", onClick (RemoveActivity activity) ] [ text "Remove" ]

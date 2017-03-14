@@ -353,14 +353,7 @@
         .then(function(data){
 
         }, function(err){
-            message = {
-                messageClass: "error",
-                header: "Error adding Activity",
-                text: err.code,
-                active: true
-            }
-
-            app.ports.errorMessage.send(message)
+            errorMessage("Error adding Activity:"+err)
         });
     });
 
@@ -369,14 +362,7 @@
         .then(function(response){
 
         }, function(err){
-            message = {
-                messageClass: "error",
-                header: "Error updating Activity",
-                text: err.code,
-                active: true
-            }
-
-            app.ports.errorMessage.send(message)
+            errorMessage("Error updating Activity:"+err)
         });
     });
     app.ports.removeActivity.subscribe(function(activity){
@@ -391,14 +377,7 @@
                 .then(function(response){
 
                 }, function(err) {
-                    message = {
-                        messageClass: "error",
-                        header: "Error removing Activity",
-                        text: err.code,
-                        active: true
-                    }
-
-                    app.ports.errorMessage.send(message)
+                    errorMessage( "Error removing Activity:"+err)
                 });
             }
           })
@@ -430,14 +409,7 @@
         .then(function(data){
 
         }, function(err){
-            message = {
-                messageClass: "error",
-                header: "Error adding ActivityGroup",
-                text: err.code,
-                active: true
-            }
-
-            app.ports.errorMessage.send(message)
+            errorMessage( "Error adding ActivityGroup:"+err)
         });
     });
 
@@ -446,14 +418,7 @@
         .then(function(response){
 
         }, function(err){
-            message = {
-                messageClass: "error",
-                header: "Error updating ActivityGroup",
-                text: err.code,
-                active: true
-            }
-
-            app.ports.errorMessage.send(message)
+            errorMessage( "Error updating ActivityGroup:"+err)
         });
     });
     app.ports.removeActivityGroup.subscribe(function(activityGroup){
@@ -468,14 +433,7 @@
                 .then(function(response){
 
                 }, function(err) {
-                    message = {
-                        messageClass: "error",
-                        header: "Error removing Activity",
-                        text: err.code,
-                        active: true
-                    }
-
-                    app.ports.errorMessage.send(message)
+                    errorMessage( "Error removing Activity:"+err)
                 });
             }
           })
@@ -491,7 +449,7 @@
         activityGroup.id = data.key
         app.ports.activityGroupAdded.send(activityGroup);
     });
-    
+
     activityGroupListener.on("child_removed", function(data){
         app.ports.activityGroupRemoved.send(data.key);
     });

@@ -1,4 +1,4 @@
-port module Index exposing (..)
+port module TrelloBoard exposing (..)
 
 import Html exposing (..)
 import Html.Events exposing (..)
@@ -124,7 +124,10 @@ view model boards authorized =
                     Just card ->
                         showCard model card
             else
-                a [ class "ui button", onClick (Authorize) ] [ text "Authorize and load boards" ]
+                div [ class "main" ]
+                    [ h1 [ class "ui header" ] [ text "Boards" ]
+                    , a [ class "ui button", onClick (Authorize) ] [ text "Authorize and load boards" ]
+                    ]
     in
         renderedHtml
 

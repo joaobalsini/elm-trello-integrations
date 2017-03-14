@@ -6,8 +6,7 @@ import Html.Events exposing (..)
 import Navigation exposing (Location)
 import Routes exposing (..)
 import Message exposing (..)
-import Index
-import Login
+import TrelloBoard
 import Activity
 import ActivityGroup
 import Date
@@ -35,8 +34,7 @@ main =
 type alias Model =
     { route : Route
     , lastRoute : Route
-    , login : Login.Model
-    , index : Index.Model
+    , trelloBoard : TrelloBoard.Model
     , activity : Activity.Model
     , activityGroup : ActivityGroup.Model
     , message : Message.Message
@@ -72,8 +70,8 @@ init location =
         route =
             locationToRoute location
 
-        ( indexInitModel, indexCmd ) =
-            Index.init
+        ( trelloBoardInitModel, trelloBoardCmd ) =
+            TrelloBoard.init
 
         ( activityInitModel, activityCmd ) =
             Activity.init
@@ -81,19 +79,15 @@ init location =
         ( activityGroupInitModel, activityGroupCmd ) =
             ActivityGroup.init
 
-        ( loginInitModel, loginCmd ) =
-            Login.init
-
         ( messageInitModel, messageCmd ) =
             Message.init
 
         initModel =
             { route = route
-            , lastRoute = IndexRoute
-            , index = indexInitModel
+            , lastRoute = TrelloBoardRoute
+            , trelloBoard = trelloBoardInitModel
             , activity = activityInitModel
             , activityGroup = activityGroupInitModel
-            , login = loginInitModel
             , message = Message.initMessage
             , trelloAuthorized = False
             , boards = []
@@ -103,8 +97,7 @@ init location =
 
         cmds =
             Cmd.batch
-                [ Cmd.map LoginMsg loginCmd
-                , Cmd.map IndexMsg indexCmd
+                [ Cmd.map TrelloBoardMsg trelloBoardCmd
                 , Cmd.map ActivityMsg activityCmd
                 , Cmd.map ActivityGroupMsg activityGroupCmd
                 , Cmd.map MessageMsg messageCmd
@@ -219,10 +212,9 @@ type Msg
     | LabelsLoaded TrelloLabelPlusBoardId
     | CardLoaded TrelloCardPlusListIdPlusBoardId
     | DateLoaded String
-    | IndexMsg Index.Msg
+    | TrelloBoardMsg TrelloBoard.Msg
     | ActivityMsg Activity.Msg
     | ActivityGroupMsg ActivityGroup.Msg
-    | LoginMsg Login.Msg
     | MessageMsg Message.Msg
 
 
@@ -299,9 +291,9 @@ update msg model =
                                     { board | lists = trelloList }
 
                                 selectedBoard =
-                                    case model.index.selectedBoard of
+                                    case model.trelloBoard.selectedBoard of
                                         Nothing ->
-                                            model.index.selectedBoard
+                                            model.trelloBoard.selectedBoard
 
                                         Just board ->
                                             if board.id == boardId then
@@ -311,13 +303,13 @@ update msg model =
                             in
                                 ( List.map (updateBoardAtId updatedBoard boardId) model.boards, selectedBoard )
 
-                currentIndex =
-                    model.index
+                currentTrelloBoard =
+                    model.trelloBoard
 
-                updatedIndex =
-                    { currentIndex | selectedBoard = selectedBoard }
+                updatedTrelloBoard =
+                    { currentTrelloBoard | selectedBoard = selectedBoard }
             in
-                ( { model | boards = newBoards, index = updatedIndex }
+                ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard }
                 , Cmd.none
                 )
 
@@ -338,9 +330,9 @@ update msg model =
                                     { board | labels = trelloLabel }
 
                                 selectedBoard =
-                                    case model.index.selectedBoard of
+                                    case model.trelloBoard.selectedBoard of
                                         Nothing ->
-                                            model.index.selectedBoard
+                                            model.trelloBoard.selectedBoard
 
                                         Just board ->
                                             if board.id == boardId then
@@ -350,13 +342,13 @@ update msg model =
                             in
                                 ( List.map (updateBoardAtId updatedBoard boardId) model.boards, selectedBoard )
 
-                currentIndex =
-                    model.index
+                currentTrelloBoard =
+                    model.trelloBoard
 
-                updatedIndex =
-                    { currentIndex | selectedBoard = selectedBoard }
+                updatedTrelloBoard =
+                    { currentTrelloBoard | selectedBoard = selectedBoard }
             in
-                ( { model | boards = newBoards, index = updatedIndex }
+                ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard }
                 , Cmd.none
                 )
 
@@ -393,9 +385,9 @@ update msg model =
                                                 { board | lists = newLists }
 
                                             selectedBoard =
-                                                case model.index.selectedBoard of
+                                                case model.trelloBoard.selectedBoard of
                                                     Nothing ->
-                                                        model.index.selectedBoard
+                                                        model.trelloBoard.selectedBoard
 
                                                     Just board ->
                                                         if board.id == boardId then
@@ -404,9 +396,9 @@ update msg model =
                                                             Just board
 
                                             selectedCard =
-                                                case model.index.selectedCard of
+                                                case model.trelloBoard.selectedCard of
                                                     Nothing ->
-                                                        model.index.selectedCard
+                                                        model.trelloBoard.selectedCard
 
                                                     Just card ->
                                                         if card.id == trelloCard.id then
@@ -419,31 +411,31 @@ update msg model =
                                         in
                                             ( newBoards, selectedBoard, selectedCard )
 
-                currentIndex =
-                    model.index
+                currentTrelloBoard =
+                    model.trelloBoard
 
-                updatedIndex =
-                    { currentIndex | selectedBoard = selectedBoard, selectedCard = selectedCard }
+                updatedTrelloBoard =
+                    { currentTrelloBoard | selectedBoard = selectedBoard, selectedCard = selectedCard }
             in
-                ( { model | boards = newBoards, index = updatedIndex }
+                ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard }
                 , Cmd.none
                 )
 
-        IndexMsg msg ->
+        TrelloBoardMsg msg ->
             case msg of
-                Index.LoadBoards ->
+                TrelloBoard.LoadBoards ->
                     update LoadBoards model
 
-                Index.Authorize ->
+                TrelloBoard.Authorize ->
                     update Authorize model
 
                 _ ->
                     let
-                        ( indexModel, cmd, message ) =
-                            Index.update msg model.index
+                        ( trelloBoardModel, cmd, message ) =
+                            TrelloBoard.update msg model.trelloBoard
                     in
-                        ( { model | index = indexModel, message = message }
-                        , Cmd.map IndexMsg cmd
+                        ( { model | trelloBoard = trelloBoardModel, message = message }
+                        , Cmd.map TrelloBoardMsg cmd
                         )
 
         ActivityMsg msg ->
@@ -558,15 +550,6 @@ update msg model =
                         , Cmd.map ActivityGroupMsg cmd
                         )
 
-        LoginMsg msg ->
-            let
-                ( loginModel, cmd, message ) =
-                    Login.update msg model.login
-            in
-                ( { model | login = loginModel, message = message }
-                , Cmd.map LoginMsg cmd
-                )
-
         MessageMsg msg ->
             let
                 ( messageModel, cmd ) =
@@ -583,13 +566,9 @@ view model =
         -- get the page through the view method of each Module passing the parameters needed and render that page
         page =
             case model.route of
-                IndexRoute ->
-                    Html.map IndexMsg
-                        (Index.view model.index model.boards model.trelloAuthorized)
-
-                LoginRoute ->
-                    Html.map LoginMsg
-                        (Login.view model.login)
+                TrelloBoardRoute ->
+                    Html.map TrelloBoardMsg
+                        (TrelloBoard.view model.trelloBoard model.boards model.trelloAuthorized)
 
                 ActivityRoute ->
                     Html.map ActivityMsg
@@ -623,11 +602,10 @@ pageHeader model =
                 a [ class "item right", onClick (Authorize) ] [ text "Authorize Trello" ]
     in
         div [ class "ui container" ]
-            [ a [ class "item", onClick (Navigate IndexRoute) ] [ text "Index" ]
-            , a [ class "item", onClick (Navigate ActivityRoute) ] [ text "Activities" ]
-            , a [ class "item", onClick (Navigate ActivityGroupRoute) ] [ text "ActivityGroups" ]
+            [ a [ class "item", onClick (Navigate ActivityRoute) ] [ text "Activities" ]
+            , a [ class "item", onClick (Navigate ActivityGroupRoute) ] [ text "Activity Groups" ]
+            , a [ class "item", onClick (Navigate TrelloBoardRoute) ] [ text "Trello Boards" ]
             , authorizeTrelloLink
-            , a [ class "item right", onClick (Navigate LoginRoute) ] [ text "Login" ]
             ]
 
 
@@ -667,11 +645,8 @@ port actualDateLoaded : (String -> msg) -> Sub msg
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
-        loginSub =
-            Login.subscriptions model.login
-
-        indexSub =
-            Index.subscriptions model.index
+        trelloBoardSub =
+            TrelloBoard.subscriptions model.trelloBoard
 
         messageSub =
             Message.subscriptions model.message
@@ -683,8 +658,7 @@ subscriptions model =
             ActivityGroup.subscriptions model.activityGroup
     in
         Sub.batch
-            [ Sub.map IndexMsg indexSub
-            , Sub.map LoginMsg loginSub
+            [ Sub.map TrelloBoardMsg trelloBoardSub
             , Sub.map MessageMsg messageSub
             , Sub.map ActivityMsg activitySub
             , Sub.map ActivityGroupMsg activityGroupSub

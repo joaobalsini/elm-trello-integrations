@@ -18,6 +18,7 @@ type alias Model =
     , showErrorPanel : Bool
     , redirectRoute : Route
     , showingForm : Bool
+    , waitingServerConfirmation : Bool
     }
 
 
@@ -27,8 +28,9 @@ initModel =
     , nameError = Nothing
     , activityGroup = initActivityGroup
     , showErrorPanel = False
-    , redirectRoute = IndexRoute
+    , redirectRoute = TrelloBoardRoute
     , showingForm = False
+    , waitingServerConfirmation = False
     }
 
 
@@ -85,16 +87,37 @@ update msg model =
             ( { model | name = activityGroup.name, activityGroup = activityGroup, showingForm = True }, Cmd.none, initMessage )
 
         RemoveActivityGroup activityGroup ->
-            ( initModel, removeActivityGroup activityGroup, initMessage )
+            ( { initModel | waitingServerConfirmation = True }, removeActivityGroup activityGroup, initMessage )
 
         ActivityGroupAdded activityGroup ->
-            ( model, Cmd.none, Message.successMessage "Activity Group successfully added" )
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "Activity Group successfully added"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
         ActivityGroupUpdated activityGroup ->
-            ( model, Cmd.none, Message.successMessage "Activity Group successfully updated" )
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "Activity Group successfully updated"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
         ActivityGroupRemoved id ->
-            ( model, Cmd.none, Message.successMessage "Activity Group successfully removed" )
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "Activity Group successfully removed"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
         Submit ->
             let
@@ -109,9 +132,9 @@ update msg model =
                     if showError then
                         ( { model1 | showErrorPanel = True }, Cmd.none )
                     else if model1.activityGroup.id == "" then
-                        ( initModel, addActivityGroup model1.activityGroup )
+                        ( { initModel | waitingServerConfirmation = True }, addActivityGroup model1.activityGroup )
                     else
-                        ( initModel, updateActivityGroup model1.activityGroup )
+                        ( { initModel | waitingServerConfirmation = True }, updateActivityGroup model1.activityGroup )
             in
                 ( updatedModel, cmd, initMessage )
 

@@ -24,7 +24,7 @@ initModel =
     { username = ""
     , password = ""
     , error = Nothing
-    , redirectRoute = IndexRoute
+    , redirectRoute = TrelloBoardRoute
     }
 
 
