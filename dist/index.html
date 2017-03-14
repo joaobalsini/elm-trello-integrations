@@ -88,6 +88,9 @@
     crossorigin="anonymous"></script>
     <script src="client.js"></script>
     <script src="semantic.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.6.2/firebase.js"></script>
+    <script src="firebaseConfig.js"></script>
+    <script src="appfb.js"></script>
 
     <script>
     var app = Elm.Main.fullscreen();
@@ -126,6 +129,10 @@
           success: function() { app.ports.trelloAuthorized.send("Trello successfully authorized!") },
           error: function() { errorMessage("Authentication failed") }
         })
+    });
+
+    app.ports.getDate.subscribe(function(){
+        app.ports.actualDateLoaded.send(new Date().toISOString())
     });
 
     app.ports.deauthorizeTrello.subscribe(function(){
@@ -194,7 +201,7 @@
         // console.log(lists)
         var listsArray = []
         var idBoard = lists.length > 0 ? lists[0].idBoard : ""
-        var regexTaskId = /\[TaskID=(.*)\]/u;
+        var regexActivityId = /\[ActivityID=(.*)\]/u;
 
         var m;
 
@@ -207,7 +214,7 @@
             {
                 var card = list.cards[j]
                 var labels = []
-                var taskId = null
+                var activityId = null
 
                 // if(card.id == "58b43d2b697a4925996fd9ce")
                 // {
@@ -228,15 +235,15 @@
                     })
                 }
 
-                if ((m = regexTaskId.exec(card.desc)) !== null) {
-                    taskId = m[1]
+                if ((m = regexActivityId.exec(card.desc)) !== null) {
+                    activityId = m[1]
                 }
 
                 cards.push({
                     id: card.id,
                     name: card.name,
                     desc: card.desc,
-                    taskId: taskId,
+                    activityId: activityId,
                     labels: labels,
                     attachments : []
                 })
@@ -340,19 +347,159 @@
     }
 
 
-    // var myList = "57bf6052835199ceee54009b";
-    // var creationSuccess = function(data) {
-    //   console.log('Card created successfully. Data returned:' + JSON.stringify(data));
-    // };
-    // var newCard = {
-    //   name: 'New Test Card',
-    //   desc: 'This is the description of our new card.',
-    //   // Place this card at the top of our list
-    //   idList: myList,
-    //   pos: 'top'
-    // };
-    // Trello.post('/cards/', newCard, creationSuccess);
+    //Activities
+    app.ports.addActivity.subscribe(function(activity){
+        addActivity(activity)
+        .then(function(data){
 
+        }, function(err){
+            message = {
+                messageClass: "error",
+                header: "Error adding Activity",
+                text: err.code,
+                active: true
+            }
+
+            app.ports.errorMessage.send(message)
+        });
+    });
+
+    app.ports.updateActivity.subscribe(function(activity){
+        updateActivity(activity)
+        .then(function(response){
+
+        }, function(err){
+            message = {
+                messageClass: "error",
+                header: "Error updating Activity",
+                text: err.code,
+                active: true
+            }
+
+            app.ports.errorMessage.send(message)
+        });
+    });
+    app.ports.removeActivity.subscribe(function(activity){
+        $('.ui.modal')
+          .modal({
+            closable  : false,
+            onDeny    : function(){
+              return true;
+            },
+            onApprove : function() {
+                deleteActivity(activity)
+                .then(function(response){
+
+                }, function(err) {
+                    message = {
+                        messageClass: "error",
+                        header: "Error removing Activity",
+                        text: err.code,
+                        active: true
+                    }
+
+                    app.ports.errorMessage.send(message)
+                });
+            }
+          })
+          .modal('show');
+    });
+
+
+
+
+    var activityListener = activityListener();
+    activityListener.on("child_added", function(data){
+
+        var activity = Object.assign({id: data.key}, data.val());
+        activity.id = data.key
+        app.ports.activityAdded.send(activity);
+    });
+    activityListener.on("child_removed", function(data){
+        app.ports.activityRemoved.send(data.key);
+    });
+    activityListener.on('child_changed', function(data) {
+        var activity = Object.assign({id: data.key}, data.val());
+        activity.id = data.key
+        app.ports.activityUpdated.send(activity);
+    });
+
+    //ActivityGroups
+    app.ports.addActivityGroup.subscribe(function(activityGroup){
+        addActivityGroup(activityGroup)
+        .then(function(data){
+
+        }, function(err){
+            message = {
+                messageClass: "error",
+                header: "Error adding ActivityGroup",
+                text: err.code,
+                active: true
+            }
+
+            app.ports.errorMessage.send(message)
+        });
+    });
+
+    app.ports.updateActivityGroup.subscribe(function(activityGroup){
+        updateActivityGroup(activityGroup)
+        .then(function(response){
+
+        }, function(err){
+            message = {
+                messageClass: "error",
+                header: "Error updating ActivityGroup",
+                text: err.code,
+                active: true
+            }
+
+            app.ports.errorMessage.send(message)
+        });
+    });
+    app.ports.removeActivityGroup.subscribe(function(activityGroup){
+        $('.ui.modal')
+          .modal({
+            closable  : false,
+            onDeny    : function(){
+              return true;
+            },
+            onApprove : function() {
+                deleteActivityGroup(activityGroup)
+                .then(function(response){
+
+                }, function(err) {
+                    message = {
+                        messageClass: "error",
+                        header: "Error removing Activity",
+                        text: err.code,
+                        active: true
+                    }
+
+                    app.ports.errorMessage.send(message)
+                });
+            }
+          })
+          .modal('show');
+    });
+
+
+
+
+    var activityGroupListener = activityGroupListener();
+    activityGroupListener.on("child_added", function(data){
+        var activityGroup = Object.assign({id: data.key}, data.val());
+        activityGroup.id = data.key
+        app.ports.activityGroupAdded.send(activityGroup);
+    });
+    
+    activityGroupListener.on("child_removed", function(data){
+        app.ports.activityGroupRemoved.send(data.key);
+    });
+    activityGroupListener.on('child_changed', function(data) {
+        var activityGroup = Object.assign({id: data.key}, data.val());
+        activityGroup.id = data.key
+        app.ports.activityGroupUpdated.send(activityGroup);
+    });
     </script>
 </body>
 

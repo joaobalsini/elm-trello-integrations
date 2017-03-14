@@ -7,6 +7,8 @@ import UrlParser as Url exposing ((</>), (<?>), top)
 type Route
     = IndexRoute
     | LoginRoute
+    | ActivityRoute
+    | ActivityGroupRoute
     | NotFoundRoute
 
 
@@ -15,6 +17,12 @@ routeToHash route =
     case route of
         IndexRoute ->
             "#/"
+
+        ActivityRoute ->
+            "#/activities"
+
+        ActivityGroupRoute ->
+            "#/activityGroups"
 
         LoginRoute ->
             "#/login"
@@ -27,6 +35,8 @@ matchers : Url.Parser (Route -> a) a
 matchers =
     Url.oneOf
         [ Url.map IndexRoute top
+        , Url.map ActivityRoute (Url.s "activities")
+        , Url.map ActivityGroupRoute (Url.s "activityGroups")
         , Url.map LoginRoute (Url.s "login")
         ]
 

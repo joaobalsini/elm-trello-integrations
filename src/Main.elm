@@ -8,6 +8,13 @@ import Routes exposing (..)
 import Message exposing (..)
 import Index
 import Login
+import Activity
+import ActivityGroup
+import Date
+
+
+-- import ActivityGroup
+
 import Aliases exposing (..)
 
 
@@ -30,9 +37,13 @@ type alias Model =
     , lastRoute : Route
     , login : Login.Model
     , index : Index.Model
+    , activity : Activity.Model
+    , activityGroup : ActivityGroup.Model
     , message : Message.Message
     , trelloAuthorized : Bool
-    , boards : List Board
+    , boards : List TrelloBoard
+    , activities : List Activity
+    , activityGroups : List ActivityGroup
     }
 
 
@@ -64,6 +75,12 @@ init location =
         ( indexInitModel, indexCmd ) =
             Index.init
 
+        ( activityInitModel, activityCmd ) =
+            Activity.init
+
+        ( activityGroupInitModel, activityGroupCmd ) =
+            ActivityGroup.init
+
         ( loginInitModel, loginCmd ) =
             Login.init
 
@@ -74,16 +91,22 @@ init location =
             { route = route
             , lastRoute = IndexRoute
             , index = indexInitModel
+            , activity = activityInitModel
+            , activityGroup = activityGroupInitModel
             , login = loginInitModel
             , message = Message.initMessage
             , trelloAuthorized = False
             , boards = []
+            , activities = []
+            , activityGroups = []
             }
 
         cmds =
             Cmd.batch
                 [ Cmd.map LoginMsg loginCmd
                 , Cmd.map IndexMsg indexCmd
+                , Cmd.map ActivityMsg activityCmd
+                , Cmd.map ActivityGroupMsg activityGroupCmd
                 , Cmd.map MessageMsg messageCmd
                 ]
     in
@@ -101,7 +124,7 @@ locationToMsg location =
         |> ChangePage
 
 
-getBoardByIdFromList : List Board -> String -> Maybe Board
+getBoardByIdFromList : List TrelloBoard -> String -> Maybe TrelloBoard
 getBoardByIdFromList list id =
     case list of
         [] ->
@@ -140,7 +163,7 @@ getTrelloCardByIdFromList list id =
                 getTrelloCardByIdFromList xs id
 
 
-updateBoardAtId : Board -> String -> Board -> Board
+updateBoardAtId : TrelloBoard -> String -> TrelloBoard -> TrelloBoard
 updateBoardAtId updatedElement elementId originalElement =
     if originalElement.id == elementId then
         updatedElement
@@ -164,6 +187,22 @@ updateTrelloCardAtId updatedElement elementId originalElement =
         originalElement
 
 
+updateActivityAtId : Activity -> String -> Activity -> Activity
+updateActivityAtId updatedElement elementId originalElement =
+    if originalElement.id == elementId then
+        updatedElement
+    else
+        originalElement
+
+
+updateActivityGroupAtId : ActivityGroup -> String -> ActivityGroup -> ActivityGroup
+updateActivityGroupAtId updatedElement elementId originalElement =
+    if originalElement.id == elementId then
+        updatedElement
+    else
+        originalElement
+
+
 
 -- update
 
@@ -175,11 +214,14 @@ type Msg
     | Authorized String
     | Deauthorize
     | LoadBoards
-    | BoardsLoaded (List Board)
+    | BoardsLoaded (List TrelloBoard)
     | ListsLoaded TrelloListPlusBoardId
     | LabelsLoaded TrelloLabelPlusBoardId
     | CardLoaded TrelloCardPlusListIdPlusBoardId
+    | DateLoaded String
     | IndexMsg Index.Msg
+    | ActivityMsg Activity.Msg
+    | ActivityGroupMsg ActivityGroup.Msg
     | LoginMsg Login.Msg
     | MessageMsg Message.Msg
 
@@ -229,6 +271,16 @@ update msg model =
 
         BoardsLoaded boards ->
             ( { model | boards = boards }, Cmd.none )
+
+        DateLoaded string ->
+            let
+                activityModel =
+                    model.activity
+
+                newActivityModel =
+                    { activityModel | actualDate = Result.toMaybe (Date.fromString string) }
+            in
+                ( { model | activity = newActivityModel }, Cmd.none )
 
         ListsLoaded { trelloList, boardId } ->
             let
@@ -394,6 +446,118 @@ update msg model =
                         , Cmd.map IndexMsg cmd
                         )
 
+        ActivityMsg msg ->
+            -- Here we handle the units list, below we do the same for the materials list --
+            case msg of
+                -- We "intercept" the message to activity, in case its Added, we add the actiivty to the acvities list and pass the message to activity module
+                Activity.ActivityAdded activity ->
+                    let
+                        teste =
+                            Debug.log "ActivityAdded" activity.id
+
+                        newActivities =
+                            activity :: model.activities
+
+                        ( activityModel, cmd, message ) =
+                            Activity.update msg model.activity
+                    in
+                        ( { model | activity = activityModel, message = message, activities = newActivities }
+                        , Cmd.map ActivityMsg cmd
+                        )
+
+                -- in case its Updated we update the unit in the units list and pass the message to unit module
+                Activity.ActivityUpdated updatedActivity ->
+                    let
+                        newActivities =
+                            List.map (updateActivityAtId updatedActivity updatedActivity.id) model.activities
+
+                        ( activityModel, cmd, message ) =
+                            Activity.update msg model.activity
+                    in
+                        ( { model | activity = activityModel, message = message, activities = newActivities }
+                        , Cmd.map ActivityMsg cmd
+                        )
+
+                -- in case its Removed we remove the unit from the units list and pass the message to unit module
+                Activity.ActivityRemoved id ->
+                    let
+                        newActivities =
+                            List.filter (\activity -> activity.id /= id)
+                                model.activities
+
+                        ( activityModel, cmd, message ) =
+                            Activity.update msg model.activity
+                    in
+                        ( { model | activity = activityModel, message = message, activities = newActivities }
+                        , Cmd.map ActivityMsg cmd
+                        )
+
+                -- otherwise we just pass the message to unit module
+                _ ->
+                    let
+                        ( activityModel, cmd, message ) =
+                            Activity.update msg model.activity
+                    in
+                        ( { model | activity = activityModel, message = message }
+                        , Cmd.map ActivityMsg cmd
+                        )
+
+        ActivityGroupMsg msg ->
+            -- Here we handle the units list, below we do the same for the materials list --
+            case msg of
+                -- We "intercept" the message to activity, in case its Added, we add the actiivty to the acvities list and pass the message to activity module
+                ActivityGroup.ActivityGroupAdded activityGroup ->
+                    let
+                        teste =
+                            Debug.log "ActivityGroupAdded" activityGroup.id
+
+                        newActivityGroups =
+                            activityGroup :: model.activityGroups
+
+                        ( activityGroupModel, cmd, message ) =
+                            ActivityGroup.update msg model.activityGroup
+                    in
+                        ( { model | activityGroup = activityGroupModel, message = message, activityGroups = newActivityGroups }
+                        , Cmd.map ActivityGroupMsg cmd
+                        )
+
+                -- in case its Updated we update the unit in the units list and pass the message to unit module
+                ActivityGroup.ActivityGroupUpdated updatedActivityGroup ->
+                    let
+                        newActivityGroups =
+                            List.map (updateActivityGroupAtId updatedActivityGroup updatedActivityGroup.id) model.activityGroups
+
+                        ( activityGroupModel, cmd, message ) =
+                            ActivityGroup.update msg model.activityGroup
+                    in
+                        ( { model | activityGroup = activityGroupModel, message = message, activityGroups = newActivityGroups }
+                        , Cmd.map ActivityGroupMsg cmd
+                        )
+
+                -- in case its Removed we remove the unit from the units list and pass the message to unit module
+                ActivityGroup.ActivityGroupRemoved id ->
+                    let
+                        newActivityGroups =
+                            List.filter (\activityGroup -> activityGroup.id /= id)
+                                model.activityGroups
+
+                        ( activityGroupModel, cmd, message ) =
+                            ActivityGroup.update msg model.activityGroup
+                    in
+                        ( { model | activityGroup = activityGroupModel, message = message, activityGroups = newActivityGroups }
+                        , Cmd.map ActivityGroupMsg cmd
+                        )
+
+                -- otherwise we just pass the message to unit module
+                _ ->
+                    let
+                        ( activityGroupModel, cmd, message ) =
+                            ActivityGroup.update msg model.activityGroup
+                    in
+                        ( { model | activityGroup = activityGroupModel, message = message }
+                        , Cmd.map ActivityGroupMsg cmd
+                        )
+
         LoginMsg msg ->
             let
                 ( loginModel, cmd, message ) =
@@ -427,6 +591,14 @@ view model =
                     Html.map LoginMsg
                         (Login.view model.login)
 
+                ActivityRoute ->
+                    Html.map ActivityMsg
+                        (Activity.view model.activity model.activities model.activityGroups)
+
+                ActivityGroupRoute ->
+                    Html.map ActivityGroupMsg
+                        (ActivityGroup.view model.activityGroup model.activityGroups)
+
                 NotFoundRoute ->
                     div [ class "main" ]
                         [ h1 []
@@ -437,6 +609,7 @@ view model =
             [ div [ class "ui fixed inverted menu" ] [ pageHeader model ]
             , Html.map MessageMsg (Message.view model.message)
             , div [ class "ui main text container" ] [ page ]
+            , confirmModalView model
             ]
 
 
@@ -451,9 +624,22 @@ pageHeader model =
     in
         div [ class "ui container" ]
             [ a [ class "item", onClick (Navigate IndexRoute) ] [ text "Index" ]
+            , a [ class "item", onClick (Navigate ActivityRoute) ] [ text "Activities" ]
+            , a [ class "item", onClick (Navigate ActivityGroupRoute) ] [ text "ActivityGroups" ]
             , authorizeTrelloLink
             , a [ class "item right", onClick (Navigate LoginRoute) ] [ text "Login" ]
             ]
+
+
+confirmModalView : Model -> Html Msg
+confirmModalView model =
+    div [ class "ui modal hidden" ]
+        [ div [ class "ui header" ] [ text "Are you sure?" ]
+        , div [ class "actions" ]
+            [ div [ class "ui red cancel button" ] [ text "Nope" ]
+            , div [ class "ui green ok button" ] [ text "Yep" ]
+            ]
+        ]
 
 
 
@@ -463,7 +649,7 @@ pageHeader model =
 port trelloAuthorized : (String -> msg) -> Sub msg
 
 
-port boardsLoaded : (List Board -> msg) -> Sub msg
+port boardsLoaded : (List TrelloBoard -> msg) -> Sub msg
 
 
 port listsLoaded : (TrelloListPlusBoardId -> msg) -> Sub msg
@@ -473,6 +659,9 @@ port labelsLoaded : (TrelloLabelPlusBoardId -> msg) -> Sub msg
 
 
 port cardLoaded : (TrelloCardPlusListIdPlusBoardId -> msg) -> Sub msg
+
+
+port actualDateLoaded : (String -> msg) -> Sub msg
 
 
 subscriptions : Model -> Sub Msg
@@ -486,14 +675,23 @@ subscriptions model =
 
         messageSub =
             Message.subscriptions model.message
+
+        activitySub =
+            Activity.subscriptions model.activity
+
+        activityGroupSub =
+            ActivityGroup.subscriptions model.activityGroup
     in
         Sub.batch
             [ Sub.map IndexMsg indexSub
             , Sub.map LoginMsg loginSub
             , Sub.map MessageMsg messageSub
+            , Sub.map ActivityMsg activitySub
+            , Sub.map ActivityGroupMsg activityGroupSub
             , trelloAuthorized Authorized
             , boardsLoaded BoardsLoaded
             , listsLoaded ListsLoaded
             , labelsLoaded LabelsLoaded
             , cardLoaded CardLoaded
+            , actualDateLoaded DateLoaded
             ]

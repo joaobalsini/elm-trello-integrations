@@ -1,7 +1,7 @@
 module Aliases exposing (..)
 
 
-type alias Board =
+type alias TrelloBoard =
     { id : String
     , name : String
     , lists : List TrelloList
@@ -18,7 +18,7 @@ type alias TrelloList =
 
 type alias TrelloCard =
     { id : String
-    , taskId : Maybe String
+    , activityId : Maybe String
     , name : String
     , desc : String
     , labels : List TrelloLabel
@@ -35,4 +35,42 @@ type alias TrelloAttachment =
 type alias TrelloLabel =
     { color : String
     , name : String
+    }
+
+
+type alias Activity =
+    { id : String
+    , name : String
+    , startDate : Maybe String
+    , endDate : Maybe String
+    , activityGroupId : String
+    }
+
+
+initActivity : Activity
+initActivity =
+    { id = ""
+    , name = ""
+    , startDate = Nothing
+    , endDate = Nothing
+    , activityGroupId = ""
+    }
+
+
+type alias ActivityGroup =
+    { id : String
+    , name : String
+    }
+
+
+initActivityGroup : ActivityGroup
+initActivityGroup =
+    { id = ""
+    , name = ""
+    }
+
+
+type alias FieldError =
+    { fieldName : String
+    , errorMessage : Maybe String
     }

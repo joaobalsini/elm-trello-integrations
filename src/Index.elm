@@ -13,7 +13,7 @@ import Message exposing (..)
 type alias Model =
     { message : Maybe String
     , query : String
-    , selectedBoard : Maybe Board
+    , selectedBoard : Maybe TrelloBoard
     , selectedLabel : Maybe TrelloLabel
     , selectedCard : Maybe TrelloCard
     }
@@ -43,7 +43,7 @@ type Msg
     | Search
     | LoadBoards
     | Authorize
-    | SelectBoard Board
+    | SelectBoard TrelloBoard
     | UnselectBoard
     | SelectLabel TrelloLabel
     | UnselectLabel
@@ -102,7 +102,7 @@ update msg model =
 -- view
 
 
-view : Model -> List Board -> Bool -> Html Msg
+view : Model -> List TrelloBoard -> Bool -> Html Msg
 view model boards authorized =
     let
         renderedHtml =
@@ -129,13 +129,13 @@ view model boards authorized =
         renderedHtml
 
 
-boardsList : List Board -> Bool -> Html Msg
+boardsList : List TrelloBoard -> Bool -> Html Msg
 boardsList boards authorized =
     List.map boardCard boards
         |> div [ class "ui two column grid" ]
 
 
-boardCard : Board -> Html Msg
+boardCard : TrelloBoard -> Html Msg
 boardCard board =
     div [ class "column" ]
         [ div [ class "ui segment" ]
@@ -145,7 +145,7 @@ boardCard board =
         ]
 
 
-showBoard : Model -> Board -> Html Msg
+showBoard : Model -> TrelloBoard -> Html Msg
 showBoard model board =
     let
         paragraphSelectLabel =
@@ -174,22 +174,22 @@ showBoard model board =
 showCard : Model -> TrelloCard -> Html Msg
 showCard model card =
     let
-        referalTask =
-            case card.taskId of
+        referalActivity =
+            case card.activityId of
                 Nothing ->
                     h3 [] [ text "" ]
 
-                Just taskId ->
+                Just activityId ->
                     let
                         justTaskId =
-                            Just taskId
+                            Just activityId
                     in
-                        h3 [] [ text ("Subtask of task of id: " ++ taskId) ]
+                        h3 [] [ text ("Subactivity of activity of id: " ++ activityId) ]
     in
         div [ class "main" ]
             [ h1 [ class "ui header" ] [ text ("Showing card " ++ card.name) ]
             , h3 [] [ text ("Id (Trello): " ++ card.id) ]
-            , referalTask
+            , referalActivity
             , h3 [] [ text "Labels" ]
             , trelloLabelsAsCollumns model False card.labels
             , h3 [] [ text "Attachments" ]
@@ -315,12 +315,12 @@ cardToLi : TrelloCard -> Html Msg
 cardToLi card =
     let
         namePlusId =
-            case card.taskId of
+            case card.activityId of
                 Nothing ->
                     card.name
 
-                Just taskId ->
-                    card.name ++ " [taskId= " ++ taskId ++ "]"
+                Just activityId ->
+                    card.name ++ " [activityId= " ++ activityId ++ "]"
 
         aLink =
             a [ onClick (SelectCard card) ] [ text "( Show )" ]
