@@ -44,6 +44,7 @@ type alias Activity =
     , startDate : Maybe String
     , endDate : Maybe String
     , activityGroupId : String
+    , trelloCards : List TrelloCard
     }
 
 
@@ -54,6 +55,7 @@ initActivity =
     , startDate = Nothing
     , endDate = Nothing
     , activityGroupId = ""
+    , trelloCards = []
     }
 
 

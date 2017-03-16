@@ -196,6 +196,31 @@ updateActivityGroupAtId updatedElement elementId originalElement =
         originalElement
 
 
+updateActivityCardsForGivenCardsAndActivity : List TrelloCard -> Activity -> Activity
+updateActivityCardsForGivenCardsAndActivity cards originalActivity =
+    let
+        trelloCards =
+            (List.filter (cardBelongsToActivity originalActivity) cards)
+
+        count =
+            Debug.log ("TrelloCards for id: " ++ originalActivity.id) (List.length trelloCards)
+    in
+        { originalActivity | trelloCards = trelloCards }
+
+
+cardBelongsToActivity : Activity -> TrelloCard -> Bool
+cardBelongsToActivity searchedActivity trelloCard =
+    case trelloCard.activityId of
+        Nothing ->
+            False
+
+        Just cardActivityId ->
+            if searchedActivity.id == cardActivityId then
+                True
+            else
+                False
+
+
 
 -- update
 
@@ -308,8 +333,20 @@ update msg model =
 
                 updatedTrelloBoard =
                     { currentTrelloBoard | selectedBoard = selectedBoard }
+
+                -- ok, we need to go through all the cards and update activities information, i.e. what are the activity's cards if any...
+                cards =
+                    case selectedBoard of
+                        Nothing ->
+                            []
+
+                        Just board ->
+                            List.concatMap (.cards) board.lists
+
+                updatedActivities =
+                    List.map (updateActivityCardsForGivenCardsAndActivity cards) model.activities
             in
-                ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard }
+                ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard, activities = updatedActivities }
                 , Cmd.none
                 )
 
@@ -604,7 +641,7 @@ pageHeader model =
         div [ class "ui container" ]
             [ a [ class "item", onClick (Navigate ActivityRoute) ] [ text "Activities" ]
             , a [ class "item", onClick (Navigate ActivityGroupRoute) ] [ text "Activity Groups" ]
-            , a [ class "item", onClick (Navigate TrelloBoardRoute) ] [ text "Trello Boards" ]
+            , a [ class "item", onClick (Navigate TrelloBoardRoute) ] [ text "Trello Board select" ]
             , authorizeTrelloLink
             ]
 

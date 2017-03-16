@@ -5,7 +5,7 @@ import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Message exposing (..)
 import Routes exposing (..)
-import Aliases exposing (Activity, ActivityGroup, initActivity, FieldError)
+import Aliases exposing (Activity, ActivityGroup, initActivity, FieldError, TrelloCard)
 import Date exposing (..)
 import Date.Extra as DateExtra
 import Regex
@@ -372,6 +372,7 @@ activitiesTh =
             , th [] [ text "Name" ]
             , th [] [ text "Start date" ]
             , th [] [ text "End Date" ]
+            , th [] [ text "Cards" ]
             , th [] [ text "Activity Group" ]
             , th [] [ text "Actions" ]
             ]
@@ -433,12 +434,26 @@ activityToTr activityGroups activity =
             , td [] [ text activity.name ]
             , td [] [ text formattedStartDate ]
             , td [] [ text formattedEndDate ]
+            , td [] [ (trelloCardsToUl activity.trelloCards) ]
             , td [] [ text activityGroupName ]
             , td []
                 [ button [ class "ui button", onClick (EditActivity activity) ] [ text "Edit" ]
                 , button [ class "ui button", onClick (RemoveActivity activity) ] [ text "Remove" ]
                 ]
             ]
+
+
+trelloCardsToUl : List TrelloCard -> Html Msg
+trelloCardsToUl trelloCards =
+    if List.isEmpty trelloCards then
+        div [] [ text "No cards found" ]
+    else
+        ul [] (List.map trelloCardtoLi trelloCards)
+
+
+trelloCardtoLi : TrelloCard -> Html Msg
+trelloCardtoLi trelloCard =
+    li [] [ text trelloCard.name ]
 
 
 activityForm : Model -> List ActivityGroup -> Html Msg
