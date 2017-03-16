@@ -26,6 +26,17 @@ type alias TrelloCard =
     }
 
 
+initTrelloCard : TrelloCard
+initTrelloCard =
+    { id = ""
+    , activityId = Nothing
+    , name = ""
+    , desc = ""
+    , labels = []
+    , attachments = []
+    }
+
+
 type alias TrelloAttachment =
     { name : String
     , url : String

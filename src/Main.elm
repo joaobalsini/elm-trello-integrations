@@ -481,9 +481,6 @@ update msg model =
                 -- We "intercept" the message to activity, in case its Added, we add the actiivty to the acvities list and pass the message to activity module
                 Activity.ActivityAdded activity ->
                     let
-                        teste =
-                            Debug.log "ActivityAdded" activity.id
-
                         newActivities =
                             activity :: model.activities
 
@@ -537,9 +534,6 @@ update msg model =
                 -- We "intercept" the message to activity, in case its Added, we add the actiivty to the acvities list and pass the message to activity module
                 ActivityGroup.ActivityGroupAdded activityGroup ->
                     let
-                        teste =
-                            Debug.log "ActivityGroupAdded" activityGroup.id
-
                         newActivityGroups =
                             activityGroup :: model.activityGroups
 
@@ -609,7 +603,7 @@ view model =
 
                 ActivityRoute ->
                     Html.map ActivityMsg
-                        (Activity.view model.activity model.activities model.activityGroups)
+                        (Activity.view model.activity model.activities model.activityGroups model.trelloBoard.selectedBoard)
 
                 ActivityGroupRoute ->
                     Html.map ActivityGroupMsg

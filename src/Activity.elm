@@ -5,7 +5,7 @@ import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Message exposing (..)
 import Routes exposing (..)
-import Aliases exposing (Activity, ActivityGroup, initActivity, FieldError, TrelloCard)
+import Aliases exposing (Activity, ActivityGroup, initActivity, FieldError, TrelloCard, initTrelloCard, TrelloBoard, TrelloList)
 import Date exposing (..)
 import Date.Extra as DateExtra
 import Regex
@@ -16,39 +16,57 @@ import Array
 
 
 type alias Model =
-    { name : String
-    , nameError : Maybe String
+    { activityFormName : String
+    , activityFormNameError : Maybe String
     , actualDate : Maybe Date
-    , startDate : String
-    , startDateError : Maybe String
-    , endDate : String
-    , endDateError : Maybe String
-    , activityGroupId : String
-    , activityGroupIdError : Maybe String
-    , showErrorPanel : Bool
+    , activityFormStartDate : String
+    , activityFormStartDateError : Maybe String
+    , activityFormEndDate : String
+    , activityFormEndDateError : Maybe String
+    , activityFormActivityGroupId : String
+    , activityFormActivityGroupIdError : Maybe String
+    , activityFormShowErrorPanel : Bool
     , activity : Activity
     , redirectRoute : Route
-    , showingForm : Bool
+    , activityFormShowingForm : Bool
     , waitingServerConfirmation : Bool
+    , trelloCardFormName : String
+    , trelloCardFormNameError : Maybe String
+    , trelloCardFormListId : String
+    , trelloCardFormListIdError : Maybe String
+    , trelloCardFormActivityId : String
+    , trelloCardFormActivityIdError : Maybe String
+    , trelloCardFormShowingForm : Bool
+    , trelloCardFormShowErrorPanel : Bool
+    , trelloCard : TrelloCard
     }
 
 
 initModel : Model
 initModel =
-    { name = ""
-    , nameError = Nothing
-    , startDate = ""
-    , startDateError = Nothing
+    { activityFormName = ""
+    , activityFormNameError = Nothing
+    , activityFormStartDate = ""
+    , activityFormStartDateError = Nothing
     , actualDate = Nothing
-    , endDate = ""
-    , endDateError = Nothing
-    , activityGroupId = ""
-    , activityGroupIdError = Nothing
+    , activityFormEndDate = ""
+    , activityFormEndDateError = Nothing
+    , activityFormActivityGroupId = ""
+    , activityFormActivityGroupIdError = Nothing
     , activity = initActivity
-    , showErrorPanel = False
+    , activityFormShowErrorPanel = False
     , redirectRoute = TrelloBoardRoute
-    , showingForm = False
+    , activityFormShowingForm = False
     , waitingServerConfirmation = False
+    , trelloCardFormName = ""
+    , trelloCardFormNameError = Nothing
+    , trelloCardFormListId = ""
+    , trelloCardFormListIdError = Nothing
+    , trelloCardFormActivityId = ""
+    , trelloCardFormActivityIdError = Nothing
+    , trelloCardFormShowingForm = False
+    , trelloCardFormShowErrorPanel = False
+    , trelloCard = initTrelloCard
     }
 
 
@@ -75,18 +93,24 @@ port updateActivity : Activity -> Cmd msg
 
 type Msg
     = GetDate
-    | NameInput String
-    | StartDateInput String
-    | EndDateInput String
-    | ActivityGroupIdInput String
+    | ActivityFormNameInput String
+    | ActivityFormStartDateInput String
+    | ActivityFormEndDateInput String
+    | ActivityFormActivityGroupIdInput String
     | NewActivity (Maybe ActivityGroup)
     | EditActivity Activity
     | RemoveActivity Activity
     | ActivityAdded Activity
     | ActivityUpdated Activity
     | ActivityRemoved String
-    | Submit
-    | Cancel
+    | SubmitActivityForm
+    | CancelActivityForm
+    | NewTrelloCard (Maybe Activity)
+    | TrelloCardFormSubmit
+    | TrelloCardFormNameInput String
+    | TrelloCardFormListIdInput String
+    | TrelloCardFormActivityIdInput String
+    | TrelloCardFormCancel
 
 
 parseDate : String -> Maybe Date
@@ -133,7 +157,7 @@ update msg model =
         GetDate ->
             ( model, getDate (), Message.initMessage )
 
-        NameInput name ->
+        ActivityFormNameInput name ->
             let
                 actualActivity =
                     model.activity
@@ -144,9 +168,9 @@ update msg model =
                     else
                         ( Nothing, name )
             in
-                ( { model | name = name, nameError = nameError, activity = { actualActivity | name = activityName } }, Cmd.none, initMessage )
+                ( { model | activityFormName = name, activityFormNameError = nameError, activity = { actualActivity | name = activityName } }, Cmd.none, initMessage )
 
-        StartDateInput date ->
+        ActivityFormStartDateInput date ->
             let
                 actualActivity =
                     model.activity
@@ -165,9 +189,9 @@ update msg model =
                 updatedActivity =
                     { actualActivity | startDate = activityDateAsIsoString }
             in
-                ( { model | startDate = possiblyFormattedDate, startDateError = dateError, activity = updatedActivity }, Cmd.none, initMessage )
+                ( { model | activityFormStartDate = possiblyFormattedDate, activityFormStartDateError = dateError, activity = updatedActivity }, Cmd.none, initMessage )
 
-        EndDateInput date ->
+        ActivityFormEndDateInput date ->
             let
                 actualActivity =
                     model.activity
@@ -186,9 +210,9 @@ update msg model =
                 updatedActivity =
                     { actualActivity | endDate = activityDateAsIsoString }
             in
-                ( { model | endDate = possiblyFormattedDate, endDateError = dateError, activity = updatedActivity }, Cmd.none, initMessage )
+                ( { model | activityFormEndDate = possiblyFormattedDate, activityFormEndDateError = dateError, activity = updatedActivity }, Cmd.none, initMessage )
 
-        ActivityGroupIdInput activityGroupId ->
+        ActivityFormActivityGroupIdInput activityGroupId ->
             let
                 actualActivity =
                     model.activity
@@ -199,13 +223,10 @@ update msg model =
                     else
                         ( Nothing, activityGroupId )
             in
-                ( { model | activityGroupId = activityGroupId, activityGroupIdError = activityActivityGroupIdError, activity = { actualActivity | activityGroupId = activityActivityGroupId } }, Cmd.none, initMessage )
+                ( { model | activityFormActivityGroupId = activityGroupId, activityFormActivityGroupIdError = activityActivityGroupIdError, activity = { actualActivity | activityGroupId = activityActivityGroupId } }, Cmd.none, initMessage )
 
         NewActivity maybeActivityGroup ->
             let
-                initActivity =
-                    initModel.activity
-
                 activityGroupId =
                     case maybeActivityGroup of
                         Nothing ->
@@ -213,11 +234,8 @@ update msg model =
 
                         Just activityGroup ->
                             activityGroup.id
-
-                newActivity =
-                    { initActivity | activityGroupId = activityGroupId }
             in
-                ( { initModel | showingForm = True, activityGroupId = activityGroupId }, Cmd.none, initMessage )
+                ( { initModel | activityFormShowingForm = True, activityFormActivityGroupId = activityGroupId }, Cmd.none, initMessage )
 
         EditActivity activity ->
             let
@@ -253,7 +271,7 @@ update msg model =
                         Just d ->
                             ( Nothing, DateExtra.toFormattedString "dd/MM/y" d )
             in
-                ( { model | name = activity.name, startDate = formattedStartDate, endDate = formattedEndDate, activityGroupId = activity.activityGroupId, activity = activity, showingForm = True }, Cmd.none, initMessage )
+                ( { model | activityFormName = activity.name, activityFormStartDate = formattedStartDate, activityFormEndDate = formattedEndDate, activityFormActivityGroupId = activity.activityGroupId, activity = activity, activityFormShowingForm = True }, Cmd.none, initMessage )
 
         RemoveActivity activity ->
             ( { initModel | waitingServerConfirmation = True }, removeActivity activity, initMessage )
@@ -288,28 +306,28 @@ update msg model =
             in
                 ( model, Cmd.none, message )
 
-        Submit ->
+        SubmitActivityForm ->
             let
                 --simulate changes in all form fields, to see if it they are valid if they didn't change
                 ( model1, _, _ ) =
-                    update (NameInput model.name) model
+                    update (ActivityFormNameInput model.activityFormName) model
 
                 ( model2, _, _ ) =
-                    update (StartDateInput model1.startDate) model1
+                    update (ActivityFormStartDateInput model1.activityFormStartDate) model1
 
                 ( model3, _, _ ) =
-                    update (EndDateInput model2.endDate) model2
+                    update (ActivityFormEndDateInput model2.activityFormEndDate) model2
 
                 -- how to select the first element????
                 ( model4, _, _ ) =
-                    update (ActivityGroupIdInput model3.activityGroupId) model3
+                    update (ActivityFormActivityGroupIdInput model3.activityFormActivityGroupId) model3
 
                 showError =
-                    model4.nameError /= Nothing || model4.startDateError /= Nothing || model4.endDateError /= Nothing || model4.activityGroupIdError /= Nothing
+                    model4.activityFormNameError /= Nothing || model4.activityFormStartDateError /= Nothing || model4.activityFormEndDateError /= Nothing || model4.activityFormActivityGroupIdError /= Nothing
 
                 ( updatedModel, cmd ) =
                     if showError then
-                        ( { model4 | showErrorPanel = True }, Cmd.none )
+                        ( { model4 | activityFormShowErrorPanel = True }, Cmd.none )
                     else if model.activity.id == "" then
                         ( { initModel | waitingServerConfirmation = True }, addActivity model.activity )
                     else
@@ -317,7 +335,61 @@ update msg model =
             in
                 ( updatedModel, cmd, initMessage )
 
-        Cancel ->
+        CancelActivityForm ->
+            ( initModel, Cmd.none, initMessage )
+
+        NewTrelloCard maybeActivity ->
+            let
+                trelloCardActivityId =
+                    case maybeActivity of
+                        Nothing ->
+                            ""
+
+                        Just activity ->
+                            activity.id
+            in
+                ( { initModel | trelloCardFormShowingForm = True, trelloCardFormActivityId = trelloCardActivityId }, Cmd.none, initMessage )
+
+        TrelloCardFormSubmit ->
+            ( initModel, Cmd.none, initMessage )
+
+        TrelloCardFormNameInput name ->
+            let
+                actualTrelloCard =
+                    model.trelloCard
+
+                ( nameError, trelloCardName ) =
+                    if String.length name < 5 then
+                        ( Just "Should be 5 or more characters", "" )
+                    else
+                        ( Nothing, name )
+            in
+                ( { model | trelloCardFormName = name, trelloCardFormNameError = nameError, trelloCard = { actualTrelloCard | name = trelloCardName } }, Cmd.none, initMessage )
+
+        TrelloCardFormListIdInput listId ->
+            let
+                trelloCardListIdError =
+                    if String.length listId < 1 then
+                        Just "Should be filled"
+                    else
+                        Nothing
+            in
+                ( { model | trelloCardFormListId = listId, trelloCardFormListIdError = trelloCardListIdError }, Cmd.none, initMessage )
+
+        TrelloCardFormActivityIdInput activityId ->
+            let
+                actualTrelloCard =
+                    model.trelloCard
+
+                ( trelloCardActivityIdError, trelloCardActivityId ) =
+                    if String.length activityId < 1 then
+                        ( Just "Should be filled", Nothing )
+                    else
+                        ( Nothing, Just activityId )
+            in
+                ( { model | trelloCardFormActivityId = activityId, trelloCardFormActivityIdError = trelloCardActivityIdError, trelloCard = { actualTrelloCard | activityId = trelloCardActivityId } }, Cmd.none, initMessage )
+
+        TrelloCardFormCancel ->
             ( initModel, Cmd.none, initMessage )
 
 
@@ -325,19 +397,25 @@ update msg model =
 -- view
 
 
-view : Model -> List Activity -> List ActivityGroup -> Html Msg
-view model activities activityGroups =
+view : Model -> List Activity -> List ActivityGroup -> Maybe TrelloBoard -> Html Msg
+view model activities activityGroups selectedBoard =
     let
         tempView =
-            if model.showingForm then
+            if model.activityFormShowingForm then
                 div [ class "main" ]
                     [ h1 [ class "ui header" ] [ text "Activity Form" ]
-                    , errorPanel model
+                    , activityFormErrorPanel model
                     , activityForm model activityGroups
+                    ]
+            else if model.trelloCardFormShowingForm then
+                div [ class "main" ]
+                    [ h1 [ class "ui header" ] [ text "Trello Card Form" ]
+                    , trelloCardFormErrorPanel model
+                    , trelloCardForm model selectedBoard activities
                     ]
             else
                 div [ class "main" ]
-                    [ activityTable model activities activityGroups
+                    [ activityTable selectedBoard activities activityGroups
                     , br [] []
                     , button [ class "ui button right", onClick (NewActivity (List.head activityGroups)) ] [ text "New" ]
                     ]
@@ -345,15 +423,15 @@ view model activities activityGroups =
         tempView
 
 
-activityTable : Model -> List Activity -> List ActivityGroup -> Html Msg
-activityTable model activities activityGroups =
+activityTable : Maybe TrelloBoard -> List Activity -> List ActivityGroup -> Html Msg
+activityTable selectedBoard activities activityGroups =
     -- filter using query afterwards
     let
         table_ =
             if List.isEmpty activities then
                 div [] [ text "No activity found!" ]
             else
-                List.map (activityToTr activityGroups) activities
+                List.map (activityToTr selectedBoard activityGroups) activities
                     |> tbody []
                     |> (\r -> activitiesTh :: [ r ])
                     |> table [ class "ui celled table" ]
@@ -392,8 +470,8 @@ getActivityGroupByIdFromList list id =
                 getActivityGroupByIdFromList xs id
 
 
-activityToTr : List ActivityGroup -> Activity -> Html Msg
-activityToTr activityGroups activity =
+activityToTr : Maybe TrelloBoard -> List ActivityGroup -> Activity -> Html Msg
+activityToTr selectedBoard activityGroups activity =
     let
         formattedStartDate =
             case activity.startDate of
@@ -434,7 +512,7 @@ activityToTr activityGroups activity =
             , td [] [ text activity.name ]
             , td [] [ text formattedStartDate ]
             , td [] [ text formattedEndDate ]
-            , td [] [ (trelloCardsToUl activity.trelloCards) ]
+            , td [] [ (trelloCardsToUl selectedBoard activity.trelloCards activity) ]
             , td [] [ text activityGroupName ]
             , td []
                 [ button [ class "ui button", onClick (EditActivity activity) ] [ text "Edit" ]
@@ -443,12 +521,22 @@ activityToTr activityGroups activity =
             ]
 
 
-trelloCardsToUl : List TrelloCard -> Html Msg
-trelloCardsToUl trelloCards =
-    if List.isEmpty trelloCards then
-        div [] [ text "No cards found" ]
+trelloCardsToUl : Maybe TrelloBoard -> List TrelloCard -> Activity -> Html Msg
+trelloCardsToUl selectedBoard trelloCards activity =
+    if selectedBoard == Nothing then
+        div []
+            [ text "Please select a trello board first!"
+            ]
+    else if List.isEmpty trelloCards then
+        div []
+            [ text "No cards found"
+            , button [ class "ui button", onClick (NewTrelloCard (Just activity)) ] [ text "Add Card" ]
+            ]
     else
-        ul [] (List.map trelloCardtoLi trelloCards)
+        div []
+            [ ul [] (List.map trelloCardtoLi trelloCards)
+            , button [ class "ui button", onClick (NewTrelloCard (Just activity)) ] [ text "Add Card" ]
+            ]
 
 
 trelloCardtoLi : TrelloCard -> Html Msg
@@ -458,61 +546,125 @@ trelloCardtoLi trelloCard =
 
 activityForm : Model -> List ActivityGroup -> Html Msg
 activityForm model activityGroups =
-    Html.form [ class "ui large form", onSubmit Submit ]
+    Html.form [ class "ui large form", onSubmit SubmitActivityForm ]
         [ div [ class "ui stacked segment" ]
             [ div
                 [ classList
-                    [ ( "field", True ), ( "error", model.nameError /= Nothing ) ]
+                    [ ( "field", True ), ( "error", model.activityFormNameError /= Nothing ) ]
                 ]
                 [ label [] [ text "Name" ]
                 , input
                     [ type_ "text"
-                    , value model.name
-                    , onInput NameInput
+                    , value model.activityFormName
+                    , onInput ActivityFormNameInput
                     ]
                     []
                 ]
             , div
                 [ classList
-                    [ ( "field", True ), ( "error", model.startDateError /= Nothing ) ]
+                    [ ( "field", True ), ( "error", model.activityFormStartDateError /= Nothing ) ]
                 ]
                 [ label [] [ text "Start Date" ]
                 , input
                     [ type_ "text"
-                    , value model.startDate
-                    , onInput StartDateInput
+                    , value model.activityFormStartDate
+                    , onInput ActivityFormStartDateInput
                     ]
                     []
                 ]
             , div
                 [ classList
-                    [ ( "field", True ), ( "error", model.endDateError /= Nothing ) ]
+                    [ ( "field", True ), ( "error", model.activityFormEndDateError /= Nothing ) ]
                 ]
                 [ label [] [ text "End Date" ]
                 , input
                     [ type_ "text"
-                    , value model.endDate
-                    , onInput EndDateInput
+                    , value model.activityFormEndDate
+                    , onInput ActivityFormEndDateInput
                     ]
                     []
                 ]
             , div
                 [ classList
-                    [ ( "field", True ), ( "error", model.activityGroupIdError /= Nothing ) ]
+                    [ ( "field", True ), ( "error", model.activityFormActivityGroupIdError /= Nothing ) ]
                 ]
                 [ label [] [ text "Activity Group Id" ]
                   --                 [ select [ onInput SetDuration ]
                   --  (List.range 0 12 |> List.map intToOption)
-                , select [ onInput ActivityGroupIdInput ]
-                    (List.map (activityGroupToOption model.activityGroupId) activityGroups)
+                , select [ onInput ActivityFormActivityGroupIdInput, value model.activityFormActivityGroupId ]
+                    (List.map (activityGroupToOption model.activityFormActivityGroupId) activityGroups)
                 ]
             , div []
                 [ label [] []
                 , button [ type_ "submit", class "ui large submit button" ] [ text "Submit" ]
-                , a [ class "ui large button red", onClick Cancel ] [ text "Cancel" ]
+                , a [ class "ui large button red", onClick CancelActivityForm ] [ text "Cancel" ]
                 ]
             ]
         ]
+
+
+trelloCardForm : Model -> Maybe TrelloBoard -> List Activity -> Html Msg
+trelloCardForm model selectedBoard activities =
+    case selectedBoard of
+        Nothing ->
+            div [] [ text "Authorize trello and select one board first" ]
+
+        Just _ ->
+            let
+                trelloLists =
+                    case selectedBoard of
+                        Nothing ->
+                            []
+
+                        Just board ->
+                            board.lists
+            in
+                Html.form [ class "ui large form", onSubmit TrelloCardFormSubmit ]
+                    [ div [ class "ui stacked segment" ]
+                        [ div
+                            [ classList
+                                [ ( "field", True ), ( "error", model.trelloCardFormNameError /= Nothing ) ]
+                            ]
+                            [ label [] [ text "Name" ]
+                            , input
+                                [ type_ "text"
+                                , value model.trelloCardFormName
+                                , onInput TrelloCardFormNameInput
+                                ]
+                                []
+                            ]
+                        , div
+                            [ classList
+                                [ ( "field", True ), ( "error", model.trelloCardFormListIdError /= Nothing ) ]
+                            ]
+                            [ label [] [ text "List" ]
+                              --                 [ select [ onInput SetDuration ]
+                              --  (List.range 0 12 |> List.map intToOption)
+                            , select [ onInput TrelloCardFormListIdInput, value model.trelloCardFormListId ]
+                                (List.map (trelloListToOption) trelloLists)
+                            ]
+                        , div
+                            [ classList
+                                [ ( "field", True ), ( "error", model.trelloCardFormActivityIdError /= Nothing ) ]
+                            ]
+                            [ label [] [ text "List" ]
+                              --                 [ select [ onInput SetDuration ]
+                              --  (List.range 0 12 |> List.map intToOption)
+                            , select [ onInput TrelloCardFormActivityIdInput, value model.trelloCardFormActivityId ]
+                                (List.map (activityToOption model.trelloCardFormActivityId) activities)
+                            ]
+                        , div []
+                            [ label [] []
+                            , button [ type_ "submit", class "ui large submit button" ] [ text "Submit" ]
+                            , a [ class "ui large button red", onClick TrelloCardFormCancel ] [ text "Cancel" ]
+                            ]
+                        ]
+                    ]
+
+
+trelloListToOption : TrelloList -> Html Msg
+trelloListToOption list =
+    option [ value list.id ] [ text list.name ]
 
 
 activityGroupToOption : String -> ActivityGroup -> Html Msg
@@ -520,22 +672,50 @@ activityGroupToOption selectedActivityGroupId activityGroup =
     option [ value activityGroup.id, selected (selectedActivityGroupId == activityGroup.id) ] [ text activityGroup.name ]
 
 
-errorPanel : Model -> Html a
-errorPanel model =
+activityToOption : String -> Activity -> Html Msg
+activityToOption selectedActivityId activity =
+    option [ value activity.id, selected (selectedActivityId == activity.id) ] [ text activity.name ]
+
+
+activityFormErrorPanel : Model -> Html a
+activityFormErrorPanel model =
     let
         list : List FieldError
         list =
-            [ { fieldName = "Name", errorMessage = model.nameError }
-            , { fieldName = "Start date", errorMessage = model.startDateError }
-            , { fieldName = "End date", errorMessage = model.endDateError }
-            , { fieldName = "Activity Group", errorMessage = model.activityGroupIdError }
+            [ { fieldName = "Name", errorMessage = model.activityFormNameError }
+            , { fieldName = "Start date", errorMessage = model.activityFormStartDateError }
+            , { fieldName = "End date", errorMessage = model.activityFormEndDateError }
+            , { fieldName = "Activity Group", errorMessage = model.activityFormActivityGroupIdError }
             ]
 
         elementsWithError : List FieldError
         elementsWithError =
             List.filter (\el -> el.errorMessage /= Nothing) list
     in
-        if model.showErrorPanel then
+        if model.activityFormShowErrorPanel then
+            div [ class "ui message error " ]
+                [ div [ class "header" ] [ text "We had some issues:" ]
+                , ul [ class "list" ] (List.map (\el -> li [] [ text (el.fieldName ++ ":" ++ (Maybe.withDefault "" el.errorMessage)) ]) elementsWithError)
+                ]
+        else
+            div [] []
+
+
+trelloCardFormErrorPanel : Model -> Html a
+trelloCardFormErrorPanel model =
+    let
+        list : List FieldError
+        list =
+            [ { fieldName = "Name", errorMessage = model.trelloCardFormNameError }
+            , { fieldName = "List", errorMessage = model.trelloCardFormListIdError }
+            , { fieldName = "Activity", errorMessage = model.trelloCardFormActivityIdError }
+            ]
+
+        elementsWithError : List FieldError
+        elementsWithError =
+            List.filter (\el -> el.errorMessage /= Nothing) list
+    in
+        if model.trelloCardFormShowErrorPanel then
             div [ class "ui message error " ]
                 [ div [ class "header" ] [ text "We had some issues:" ]
                 , ul [ class "list" ] (List.map (\el -> li [] [ text (el.fieldName ++ ":" ++ (Maybe.withDefault "" el.errorMessage)) ]) elementsWithError)
