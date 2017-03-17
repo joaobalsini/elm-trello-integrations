@@ -91,6 +91,9 @@ port removeActivity : Activity -> Cmd msg
 port updateActivity : Activity -> Cmd msg
 
 
+port addTrelloCard : TrelloCard -> Cmd msg
+
+
 type Msg
     = GetDate
     | ActivityFormNameInput String
@@ -105,12 +108,13 @@ type Msg
     | ActivityRemoved String
     | SubmitActivityForm
     | CancelActivityForm
-    | NewTrelloCard (Maybe Activity)
+    | NewTrelloCard (Maybe Activity) (Maybe TrelloList)
     | TrelloCardFormSubmit
     | TrelloCardFormNameInput String
     | TrelloCardFormListIdInput String
     | TrelloCardFormActivityIdInput String
     | TrelloCardFormCancel
+    | TrelloCardAdded TrelloCard
 
 
 parseDate : String -> Maybe Date
@@ -338,7 +342,7 @@ update msg model =
         CancelActivityForm ->
             ( initModel, Cmd.none, initMessage )
 
-        NewTrelloCard maybeActivity ->
+        NewTrelloCard maybeActivity maybeList ->
             let
                 trelloCardActivityId =
                     case maybeActivity of
@@ -347,11 +351,39 @@ update msg model =
 
                         Just activity ->
                             activity.id
+
+                trelloCardListId =
+                    case maybeList of
+                        Nothing ->
+                            ""
+
+                        Just list ->
+                            list.id
             in
-                ( { initModel | trelloCardFormShowingForm = True, trelloCardFormActivityId = trelloCardActivityId }, Cmd.none, initMessage )
+                ( { initModel | trelloCardFormShowingForm = True, trelloCardFormActivityId = trelloCardActivityId, trelloCardFormListId = trelloCardListId }, Cmd.none, initMessage )
 
         TrelloCardFormSubmit ->
-            ( initModel, Cmd.none, initMessage )
+            let
+                --simulate changes in all form fields, to see if it they are valid if they didn't change
+                ( model1, _, _ ) =
+                    update (TrelloCardFormNameInput model.trelloCardFormName) model
+
+                ( model2, _, _ ) =
+                    update (TrelloCardFormListIdInput model1.trelloCardFormListId) model1
+
+                ( model3, _, _ ) =
+                    update (TrelloCardFormActivityIdInput model2.trelloCardFormActivityId) model2
+
+                showError =
+                    model3.trelloCardFormNameError /= Nothing || model3.trelloCardFormListIdError /= Nothing || model3.trelloCardFormActivityIdError /= Nothing
+
+                ( updatedModel, cmd ) =
+                    if showError then
+                        ( { model3 | trelloCardFormShowErrorPanel = True }, Cmd.none )
+                    else
+                        ( { initModel | waitingServerConfirmation = True }, addTrelloCard model.trelloCard )
+            in
+                ( updatedModel, cmd, initMessage )
 
         TrelloCardFormNameInput name ->
             let
@@ -391,6 +423,16 @@ update msg model =
 
         TrelloCardFormCancel ->
             ( initModel, Cmd.none, initMessage )
+
+        TrelloCardAdded trelloCard ->
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "TrelloCard successfully added"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
 
 
 
@@ -523,20 +565,29 @@ activityToTr selectedBoard activityGroups activity =
 
 trelloCardsToUl : Maybe TrelloBoard -> List TrelloCard -> Activity -> Html Msg
 trelloCardsToUl selectedBoard trelloCards activity =
-    if selectedBoard == Nothing then
-        div []
-            [ text "Please select a trello board first!"
-            ]
-    else if List.isEmpty trelloCards then
-        div []
-            [ text "No cards found"
-            , button [ class "ui button", onClick (NewTrelloCard (Just activity)) ] [ text "Add Card" ]
-            ]
-    else
-        div []
-            [ ul [] (List.map trelloCardtoLi trelloCards)
-            , button [ class "ui button", onClick (NewTrelloCard (Just activity)) ] [ text "Add Card" ]
-            ]
+    let
+        lists =
+            case selectedBoard of
+                Nothing ->
+                    []
+
+                Just board ->
+                    board.lists
+    in
+        if selectedBoard == Nothing then
+            div []
+                [ text "Please select a trello board first!"
+                ]
+        else if List.isEmpty trelloCards then
+            div []
+                [ text "No cards found"
+                , button [ class "ui button", onClick (NewTrelloCard (Just activity) (List.head lists)) ] [ text "Add Card" ]
+                ]
+        else
+            div []
+                [ ul [] (List.map trelloCardtoLi trelloCards)
+                , button [ class "ui button", onClick (NewTrelloCard (Just activity) (List.head lists)) ] [ text "Add Card" ]
+                ]
 
 
 trelloCardtoLi : TrelloCard -> Html Msg
@@ -733,10 +784,14 @@ port activityUpdated : (Activity -> msg) -> Sub msg
 port activityRemoved : (String -> msg) -> Sub msg
 
 
+port trelloCardAdded : (TrelloCard -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ activityAdded ActivityAdded
         , activityUpdated ActivityUpdated
         , activityRemoved ActivityRemoved
+        , trelloCardAdded TrelloCardAdded
         ]

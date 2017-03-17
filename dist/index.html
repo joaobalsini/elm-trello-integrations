@@ -10,6 +10,10 @@
     body {
         background-color: #FFFFFF;
     }
+
+    .ui.text.container {
+        max-width: 100%!important;
+    }
     .ui.menu .item img.logo {
         margin-right: 1.5em;
     }
@@ -458,6 +462,17 @@
         var activityGroup = Object.assign({id: data.key}, data.val());
         activityGroup.id = data.key
         app.ports.activityGroupUpdated.send(activityGroup);
+    });
+
+
+    //Activities
+    app.ports.addTrelloCard.subscribe(function(trelloCard){
+        console.log("ADDTRELLOCARD")
+        // Trello.get(
+        //     '/boards/'+boardId+"/labels",
+        //     loadedLabels,
+        //     function() { console.log("Failed to load labels"); }
+        // );
     });
     </script>
 </body>

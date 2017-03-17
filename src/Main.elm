@@ -518,6 +518,15 @@ update msg model =
                         , Cmd.map ActivityMsg cmd
                         )
 
+                Activity.TrelloCardAdded trelloCard ->
+                    let
+                        ( activityModel, cmd, message ) =
+                            Activity.update msg model.activity
+                    in
+                        ( { model | activity = activityModel, message = message }
+                        , Cmd.map ActivityMsg cmd
+                        )
+
                 -- otherwise we just pass the message to unit module
                 _ ->
                     let
