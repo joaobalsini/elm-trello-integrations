@@ -7,7 +7,9 @@ Ok, but why the hell are you doing it?
 There are many use cases for this. For example, what if an app wants to use a trello board as a LOW LEVEL management resource and an ELM APP as a HIGH LEVEL management resoure. For example, in planning, one can create a big task in elm and create subtasks in trello. It would be useful if, and only if, we can automate stuff.
 
 Part1 - see board, lists, cards and filter by label: http://recordit.co/ao478UJaUp
+
 Part2 - CRUD actions for Activities and Activity Groups: http://recordit.co/7drwiSjCNs
+
 Part3 - create and remove trelo cards from the system as parts of a given activity: http://recordit.co/tstorsSzsH
 
 **Task list**
