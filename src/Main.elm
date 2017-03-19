@@ -635,18 +635,22 @@ view model =
 pageHeader : Model -> Html Msg
 pageHeader model =
     let
-        authorizeTrelloLink =
-            if model.trelloAuthorized then
-                a [ class "item right", onClick (Deauthorize) ] [ text "Deauthorize Trello" ]
+        menuOptions =
+            if model.trelloBoard.selectedBoard /= Nothing then
+                [ a [ class "item", onClick (Navigate TrelloBoardRoute) ] [ text "Show Trello Board" ]
+                , a [ class "item", onClick (Navigate ActivityRoute) ] [ text "Activities" ]
+                , a [ class "item", onClick (Navigate ActivityGroupRoute) ] [ text "Activity Groups" ]
+                , a [ class "item right", onClick (Deauthorize) ] [ text "Deauthorize Trello" ]
+                ]
+            else if model.trelloAuthorized then
+                [ a [ class "item", onClick (Navigate TrelloBoardRoute) ] [ text "Trello Board select" ]
+                , a [ class "item right", onClick (Deauthorize) ] [ text "Deauthorize Trello" ]
+                ]
             else
-                a [ class "item right", onClick (Authorize) ] [ text "Authorize Trello" ]
+                [ a [ class "item right", onClick (Authorize) ] [ text "Authorize and select board" ] ]
     in
         div [ class "ui container" ]
-            [ a [ class "item", onClick (Navigate ActivityRoute) ] [ text "Activities" ]
-            , a [ class "item", onClick (Navigate ActivityGroupRoute) ] [ text "Activity Groups" ]
-            , a [ class "item", onClick (Navigate TrelloBoardRoute) ] [ text "Trello Board select" ]
-            , authorizeTrelloLink
-            ]
+            menuOptions
 
 
 confirmModalView : Model -> Html Msg

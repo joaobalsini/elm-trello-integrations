@@ -16,6 +16,7 @@ type alias Model =
     , selectedBoard : Maybe TrelloBoard
     , selectedLabel : Maybe TrelloLabel
     , selectedCard : Maybe TrelloCard
+    , showBoardDetails : Bool
     }
 
 
@@ -26,6 +27,7 @@ initModel =
     , selectedBoard = Nothing
     , selectedLabel = Nothing
     , selectedCard = Nothing
+    , showBoardDetails = False
     }
 
 
@@ -49,6 +51,8 @@ type Msg
     | UnselectLabel
     | SelectCard TrelloCard
     | UnselectCard
+    | ShowBoardDetails
+    | HideBoardDetails
 
 
 port loadLists : String -> Cmd msg
@@ -83,7 +87,7 @@ update msg model =
                 ( { model | selectedBoard = Just board }, cmds, initMessage )
 
         UnselectBoard ->
-            ( { model | selectedBoard = Nothing }, Cmd.none, initMessage )
+            ( { model | selectedBoard = Nothing, selectedLabel = Nothing, showBoardDetails = False }, Cmd.none, initMessage )
 
         SelectLabel label ->
             ( { model | selectedLabel = Just label }, Cmd.none, initMessage )
@@ -96,6 +100,12 @@ update msg model =
 
         UnselectCard ->
             ( { model | selectedCard = Nothing }, Cmd.none, initMessage )
+
+        ShowBoardDetails ->
+            ( { model | showBoardDetails = True }, Cmd.none, initMessage )
+
+        HideBoardDetails ->
+            ( { model | showBoardDetails = False }, Cmd.none, initMessage )
 
 
 
@@ -112,7 +122,7 @@ view model boards authorized =
                         case model.selectedBoard of
                             Nothing ->
                                 div [ class "main" ]
-                                    [ h1 [ class "ui header" ] [ text "Boards" ]
+                                    [ h1 [ class "ui header" ] [ text "Please select one board" ]
                                     , boardsList boards authorized
                                     , div [ class "ui section divider" ] [ text "" ]
                                     , searchForm model.query
@@ -151,26 +161,47 @@ boardCard board =
 showBoard : Model -> TrelloBoard -> Html Msg
 showBoard model board =
     let
+        showHideBoardButton =
+            if model.showBoardDetails then
+                a [ class "ui button", onClick (HideBoardDetails) ] [ text "Hide board details" ]
+            else
+                a [ class "ui button", onClick (ShowBoardDetails) ] [ text "Show board details" ]
+
+        divBoardDetails =
+            if model.showBoardDetails then
+                showBoardDetails model board
+            else
+                div [] []
+    in
+        div [ class "main" ]
+            [ h1 [ class "ui header" ] [ text ("Board with name " ++ board.name ++ " is selected.") ]
+            , showHideBoardButton
+            , a [ class "ui button", onClick (UnselectBoard) ] [ text "Cancel board selection" ]
+            , divBoardDetails
+            ]
+
+
+showBoardDetails : Model -> TrelloBoard -> Html Msg
+showBoardDetails model board =
+    let
         paragraphSelectLabel =
             case model.selectedLabel of
                 Nothing ->
-                    p [] [ text "Click at labels to select" ]
+                    p [] [ text "Click at labels to filter by label" ]
 
                 Just label ->
                     p []
                         [ a [ class "ui button small red", onClick UnselectLabel ] [ text "Clear selection" ]
                         ]
     in
-        div [ class "main" ]
-            [ h1 [ class "ui header" ] [ text ("Showing board " ++ board.name) ]
+        div []
+            [ div [ class "ui section divider" ] [ text "" ]
             , h3 [] [ text "Labels" ]
             , paragraphSelectLabel
             , trelloLabelsAsCollumns model True board.labels
             , div [ class "ui section divider" ] [ text "" ]
-            , h3 [] [ text "Lists" ]
+            , h3 [] [ text "Lists and its cards with tags" ]
             , trelloListsAsCollumns model board.lists
-            , div [ class "ui section divider" ] [ text "" ]
-            , a [ class "ui button", onClick (UnselectBoard) ] [ text "Show all boards" ]
             ]
 
 
@@ -199,7 +230,7 @@ showCard model card =
             , trelloAttachmentsAsCollumns card.attachments
             , h3 [] [ text "Description" ]
             , p [] [ text card.desc ]
-            , a [ class "ui button", onClick (UnselectCard) ] [ text "Show all cards" ]
+            , a [ class "ui button", onClick (UnselectCard) ] [ text "Back to board" ]
             ]
 
 
@@ -320,13 +351,14 @@ cardToLi card =
         namePlusId =
             case card.activityId of
                 Nothing ->
-                    card.name
+                    card.name ++ " "
 
                 Just activityId ->
-                    card.name ++ " [activityId= " ++ activityId ++ "]"
+                    card.name ++ " [activityId= " ++ activityId ++ "] "
 
         aLink =
-            a [ onClick (SelectCard card) ] [ text "( Show )" ]
+            button [ class "ui icon button compact circular", onClick (SelectCard card) ]
+                [ i [ class "zoom in icon" ] [] ]
     in
         li []
             [ text namePlusId

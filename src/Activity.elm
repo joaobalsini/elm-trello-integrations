@@ -581,6 +581,7 @@ trelloCardsToUl selectedBoard trelloCards activity =
         else if List.isEmpty trelloCards then
             div []
                 [ text "No cards found"
+                , br [] []
                 , button [ class "ui button", onClick (NewTrelloCard (Just activity) (List.head lists)) ] [ text "Add Card" ]
                 ]
         else
@@ -744,7 +745,7 @@ activityFormErrorPanel model =
             List.filter (\el -> el.errorMessage /= Nothing) list
     in
         if model.activityFormShowErrorPanel then
-            div [ class "ui message error " ]
+            div [ id "formErrors", class "ui message error " ]
                 [ div [ class "header" ] [ text "We had some issues:" ]
                 , ul [ class "list" ] (List.map (\el -> li [] [ text (el.fieldName ++ ":" ++ (Maybe.withDefault "" el.errorMessage)) ]) elementsWithError)
                 ]
@@ -767,7 +768,7 @@ trelloCardFormErrorPanel model =
             List.filter (\el -> el.errorMessage /= Nothing) list
     in
         if model.trelloCardFormShowErrorPanel then
-            div [ class "ui message error " ]
+            div [ id "formErrors", class "ui message error " ]
                 [ div [ class "header" ] [ text "We had some issues:" ]
                 , ul [ class "list" ] (List.map (\el -> li [] [ text (el.fieldName ++ ":" ++ (Maybe.withDefault "" el.errorMessage)) ]) elementsWithError)
                 ]
