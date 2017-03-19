@@ -13,6 +13,7 @@ type alias TrelloList =
     { id : String
     , name : String
     , cards : List TrelloCard
+    , boardId : String
     }
 
 
@@ -21,8 +22,43 @@ type alias TrelloCard =
     , activityId : Maybe String
     , name : String
     , desc : String
+    , listId : String
+    , boardId : String
     , labels : List TrelloLabel
     , attachments : List TrelloAttachment
+    }
+
+
+type alias TrelloListPlusBoardId =
+    { trelloList : List TrelloList
+    , boardId : String
+    }
+
+
+type alias TrelloLabelPlusBoardId =
+    { trelloLabel : List TrelloLabel
+    , boardId : String
+    }
+
+
+type alias TrelloCardPlusListIdPlusBoardId =
+    { trelloCard : TrelloCard
+    , listId : String
+    , boardId : String
+    }
+
+
+type alias TrelloCardIdPlusListIdPlusBoardId =
+    { trelloCardId : String
+    , listId : String
+    , boardId : String
+    }
+
+
+type alias TrelloCardPlusListIdPlusActivityId =
+    { trelloCard : TrelloCard
+    , listId : String
+    , activityId : String
     }
 
 
@@ -32,6 +68,8 @@ initTrelloCard =
     , activityId = Nothing
     , name = ""
     , desc = ""
+    , listId = ""
+    , boardId = ""
     , labels = []
     , attachments = []
     }

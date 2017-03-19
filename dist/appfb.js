@@ -8,6 +8,9 @@ var database = app.database();
 var ACTIVITIESPATH = "activities"
 
 function addActivity(activity){
+    delete activity.id
+    delete activity.trelloCards
+
   var promise = database
     .ref(ACTIVITIESPATH)
     .push(activity);
@@ -16,6 +19,9 @@ function addActivity(activity){
 
 function updateActivity(activity){
   var id = activity.id;
+  delete activity.id
+  delete activity.trelloCards
+
   var promise = database
     .ref(ACTIVITIESPATH + "/" + id)
     .set(activity);
@@ -38,6 +44,8 @@ function activityListener(){
 var ACTIVITYGROUPPATH = "activityGroups"
 
 function addActivityGroup(activityGroup){
+    delete activityGroup.id
+
   var promise = database
     .ref(ACTIVITYGROUPPATH)
     .push(activityGroup);
@@ -46,6 +54,7 @@ function addActivityGroup(activityGroup){
 
 function updateActivityGroup(activityGroup){
   var id = activityGroup.id;
+  delete activityGroup.id
   var promise = database
     .ref(ACTIVITYGROUPPATH + "/" + id)
     .set(activityGroup);

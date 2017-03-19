@@ -251,6 +251,8 @@
                     id: card.id,
                     name: card.name,
                     desc: card.desc,
+                    listId: list.id,
+                    boardId: idBoard,
                     activityId: activityId,
                     labels: labels,
                     attachments : []
@@ -262,6 +264,7 @@
                 {
                     id: list.id,
                     name: list.name,
+                    boardId: idBoard,
                     cards : cards
                 }
             )
@@ -274,7 +277,7 @@
         //      console.log({ trelloList: listsArray, boardId: idBoard })
         //  }
 
-        app.ports.listsLoaded.send({ trelloList: listsArray, boardId: idBoard })
+        app.ports.listsLoaded.send(listsArray)
         // app.ports.boardsLoaded.send(boards),
     }
 
@@ -306,8 +309,7 @@
         // app.ports.boardsLoaded.send(boards),
     }
 
-    var loadedCard = function(serverCard) {
-
+    var processCard = function(serverCard) {
         var labels = []
         var attachments = []
 
@@ -317,23 +319,28 @@
         var listId = serverCard.idList
         var boardId = serverCard.idBoard
 
-
-        for(k=0; k < serverCard.labels.length; k++)
+        if(serverCard.labels)
         {
-            var label = serverCard.labels[k]
-            labels.push({
-                color: label.color ? label.color : "gray",
-                name: label.name
-            })
+            for(k=0; k < serverCard.labels.length; k++)
+            {
+                var label = serverCard.labels[k]
+                labels.push({
+                    color: label.color ? label.color : "gray",
+                    name: label.name
+                })
+            }
         }
 
-        for(k=0; k < serverCard.attachments.length; k++)
+        if(serverCard.attachments)
         {
-            var attachment = serverCard.attachments[k]
-            attachments.push({
-                name: attachment.name,
-                url: attachment.url
-            })
+            for(k=0; k < serverCard.attachments.length; k++)
+            {
+                var attachment = serverCard.attachments[k]
+                attachments.push({
+                    name: attachment.name,
+                    url: attachment.url
+                })
+            }
         }
 
         if ((m = regexTaskId.exec(serverCard.desc)) !== null) {
@@ -346,11 +353,18 @@
             name: serverCard.name,
             desc: serverCard.desc,
             activityId: activityId,
+            listId: listId,
+            boardId: boardId,
             labels: labels,
             attachments: attachments
         }
 
-        app.ports.cardLoaded.send({ trelloCard: localCard, boardId: boardId, listId: listId })
+        return localCard
+    }
+
+    var loadedCard = function(serverCard) {
+        var localCard = processCard(serverCard)
+        app.ports.cardLoaded.send(localCard)
         // app.ports.boardsLoaded.send(boards),
     }
 
@@ -409,6 +423,7 @@
     activityListener.on('child_changed', function(data) {
         var activity = Object.assign({id: data.key}, data.val());
         activity.id = data.key
+        activity.trelloCards = []
         app.ports.activityUpdated.send(activity);
     });
 
@@ -469,15 +484,58 @@
     });
 
 
-    //Activities
-    app.ports.addTrelloCard.subscribe(function(trelloCard){
-        console.log("ADDTRELLOCARD")
-        // Trello.get(
-        //     '/boards/'+boardId+"/labels",
-        //     loadedLabels,
-        //     function() { console.log("Failed to load labels"); }
-        // );
+    //TrelloCard
+    app.ports.addTrelloCard.subscribe(function(trelloCardPlusListIdPlusActivityId){
+        cardHash = trelloCardPlusListIdPlusActivityId.trelloCard
+        listId = trelloCardPlusListIdPlusActivityId.listId
+        activityId = trelloCardPlusListIdPlusActivityId.activityId
+        params = "?"
+        params += "name="+cardHash.name
+        params += "&"
+        params += "desc=[ActivityID="+activityId+"]"
+
+        Trello.post(
+            '/lists/'+listId+"/cards"+params,
+            createdCard,
+            function() { console.log("Failed to create card"); }
+        );
     });
+
+    var createdCard = function(serverCard)
+    {
+        var localCard = processCard(serverCard)
+        app.ports.trelloCardAdded.send(localCard);
+    }
+
+    var removingTrelloCard = null
+
+    app.ports.removeTrelloCard.subscribe(function(trelloCard){
+        removingTrelloCard = trelloCard
+
+        $('.ui.modal')
+          .modal({
+            closable  : false,
+            onDeny    : function(){
+              return true;
+            },
+            onApprove : function() {
+                Trello.delete(
+                    '/cards/'+trelloCard.id,
+                    removedCard,
+                    function() { console.log("Failed to remove card"); }
+                );
+            }
+          })
+          .modal('show');
+
+
+    });
+
+    var removedCard = function()
+    {
+        app.ports.trelloCardRemoved.send(removingTrelloCard);
+        removingTrelloCard = null
+    }
     </script>
 </body>
 

@@ -45,25 +45,6 @@ type alias Model =
     }
 
 
-type alias TrelloListPlusBoardId =
-    { trelloList : List TrelloList
-    , boardId : String
-    }
-
-
-type alias TrelloLabelPlusBoardId =
-    { trelloLabel : List TrelloLabel
-    , boardId : String
-    }
-
-
-type alias TrelloCardPlusListIdPlusBoardId =
-    { trelloCard : TrelloCard
-    , listId : String
-    , boardId : String
-    }
-
-
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
@@ -201,9 +182,6 @@ updateActivityCardsForGivenCardsAndActivity cards originalActivity =
     let
         trelloCards =
             (List.filter (cardBelongsToActivity originalActivity) cards)
-
-        count =
-            Debug.log ("TrelloCards for id: " ++ originalActivity.id) (List.length trelloCards)
     in
         { originalActivity | trelloCards = trelloCards }
 
@@ -233,9 +211,9 @@ type Msg
     | Deauthorize
     | LoadBoards
     | BoardsLoaded (List TrelloBoard)
-    | ListsLoaded TrelloListPlusBoardId
+    | ListsLoaded (List TrelloList)
     | LabelsLoaded TrelloLabelPlusBoardId
-    | CardLoaded TrelloCardPlusListIdPlusBoardId
+    | CardLoaded TrelloCard
     | DateLoaded String
     | TrelloBoardMsg TrelloBoard.Msg
     | ActivityMsg Activity.Msg
@@ -299,8 +277,19 @@ update msg model =
             in
                 ( { model | activity = newActivityModel }, Cmd.none )
 
-        ListsLoaded { trelloList, boardId } ->
+        ListsLoaded listTrelloList ->
             let
+                firstList =
+                    List.head listTrelloList
+
+                boardId =
+                    case firstList of
+                        Nothing ->
+                            ""
+
+                        Just list ->
+                            list.boardId
+
                 oldBoard =
                     getBoardByIdFromList model.boards boardId
 
@@ -313,7 +302,7 @@ update msg model =
                         Just board ->
                             let
                                 updatedBoard =
-                                    { board | lists = trelloList }
+                                    { board | lists = listTrelloList }
 
                                 selectedBoard =
                                     case model.trelloBoard.selectedBoard of
@@ -389,10 +378,16 @@ update msg model =
                 , Cmd.none
                 )
 
-        CardLoaded { trelloCard, listId, boardId } ->
+        CardLoaded trelloCard ->
             -- here we need to update the list in the List TrelloList inside Board
             -- and then Board inside List Board
             let
+                listId =
+                    trelloCard.listId
+
+                boardId =
+                    trelloCard.boardId
+
                 oldBoard =
                     getBoardByIdFromList model.boards boardId
 
@@ -497,10 +492,23 @@ update msg model =
                         newActivities =
                             List.map (updateActivityAtId updatedActivity updatedActivity.id) model.activities
 
+                        -- reload cards from activity
+                        newActivities2 =
+                            case model.trelloBoard.selectedBoard of
+                                Nothing ->
+                                    newActivities
+
+                                Just board ->
+                                    let
+                                        cards =
+                                            List.concatMap (.cards) board.lists
+                                    in
+                                        List.map (updateActivityCardsForGivenCardsAndActivity cards) newActivities
+
                         ( activityModel, cmd, message ) =
                             Activity.update msg model.activity
                     in
-                        ( { model | activity = activityModel, message = message, activities = newActivities }
+                        ( { model | activity = activityModel, message = message, activities = newActivities2 }
                         , Cmd.map ActivityMsg cmd
                         )
 
@@ -519,15 +527,160 @@ update msg model =
                         )
 
                 Activity.TrelloCardAdded trelloCard ->
+                    -- here we need to update the list in the List TrelloList inside Board
+                    -- and then Board inside List Board
                     let
+                        oldBoard =
+                            getBoardByIdFromList model.boards trelloCard.boardId
+
+                        ( newBoards, selectedBoard, newActivities ) =
+                            case oldBoard of
+                                Nothing ->
+                                    ( model.boards, Nothing, model.activities )
+
+                                Just board ->
+                                    let
+                                        oldList =
+                                            getTrelloListByIdFromList board.lists trelloCard.listId
+                                    in
+                                        case oldList of
+                                            Nothing ->
+                                                ( model.boards, Nothing, model.activities )
+
+                                            Just list ->
+                                                let
+                                                    -- add card to the list of cards
+                                                    newTrelloCards =
+                                                        list.cards ++ [ trelloCard ]
+
+                                                    -- update the list
+                                                    updatedList =
+                                                        { list | cards = newTrelloCards }
+
+                                                    -- update the lists List
+                                                    newLists =
+                                                        List.map (updateTrelloListAtId updatedList trelloCard.listId) board.lists
+
+                                                    -- update board
+                                                    updatedBoard =
+                                                        { board | lists = newLists }
+
+                                                    -- update selectedBoard
+                                                    selectedBoard =
+                                                        case model.trelloBoard.selectedBoard of
+                                                            Nothing ->
+                                                                model.trelloBoard.selectedBoard
+
+                                                            Just board ->
+                                                                if board.id == trelloCard.boardId then
+                                                                    Just updatedBoard
+                                                                else
+                                                                    Just board
+
+                                                    -- update boards list
+                                                    newBoards =
+                                                        List.map (updateBoardAtId updatedBoard trelloCard.boardId) model.boards
+
+                                                    cards =
+                                                        List.concatMap (.cards) updatedBoard.lists
+
+                                                    newActivities =
+                                                        List.map (updateActivityCardsForGivenCardsAndActivity cards) model.activities
+                                                in
+                                                    ( newBoards, selectedBoard, newActivities )
+
+                        --
+                        currentTrelloBoardModel =
+                            model.trelloBoard
+
+                        -- update currentTrelloBoardModel
+                        updatedTrelloBoard =
+                            { currentTrelloBoardModel | selectedBoard = selectedBoard }
+
                         ( activityModel, cmd, message ) =
                             Activity.update msg model.activity
                     in
-                        ( { model | activity = activityModel, message = message }
-                        , Cmd.map ActivityMsg cmd
+                        ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard, activities = newActivities, activity = activityModel, message = message }
+                        , Cmd.none
                         )
 
-                -- otherwise we just pass the message to unit module
+                Activity.TrelloCardRemoved trelloCard ->
+                    let
+                        oldBoard =
+                            getBoardByIdFromList model.boards trelloCard.boardId
+
+                        ( newBoards, selectedBoard, newActivities ) =
+                            case oldBoard of
+                                Nothing ->
+                                    ( model.boards, Nothing, model.activities )
+
+                                Just board ->
+                                    let
+                                        oldList =
+                                            getTrelloListByIdFromList board.lists trelloCard.listId
+                                    in
+                                        case oldList of
+                                            Nothing ->
+                                                ( model.boards, Nothing, model.activities )
+
+                                            Just list ->
+                                                let
+                                                    -- remove card to the list of cards
+                                                    newTrelloCards =
+                                                        List.filter (\t -> t.id /= trelloCard.id)
+                                                            list.cards
+
+                                                    -- update the list
+                                                    updatedList =
+                                                        { list | cards = newTrelloCards }
+
+                                                    -- update the lists List
+                                                    newLists =
+                                                        List.map (updateTrelloListAtId updatedList trelloCard.listId) board.lists
+
+                                                    -- update board
+                                                    updatedBoard =
+                                                        { board | lists = newLists }
+
+                                                    -- update selectedBoard
+                                                    selectedBoard =
+                                                        case model.trelloBoard.selectedBoard of
+                                                            Nothing ->
+                                                                model.trelloBoard.selectedBoard
+
+                                                            Just board ->
+                                                                if board.id == trelloCard.boardId then
+                                                                    Just updatedBoard
+                                                                else
+                                                                    Just board
+
+                                                    -- update boards list
+                                                    newBoards =
+                                                        List.map (updateBoardAtId updatedBoard trelloCard.boardId) model.boards
+
+                                                    cards =
+                                                        List.concatMap (.cards) updatedBoard.lists
+
+                                                    newActivities =
+                                                        List.map (updateActivityCardsForGivenCardsAndActivity cards) model.activities
+                                                in
+                                                    ( newBoards, selectedBoard, newActivities )
+
+                        --
+                        currentTrelloBoardModel =
+                            model.trelloBoard
+
+                        -- update currentTrelloBoardModel
+                        updatedTrelloBoard =
+                            { currentTrelloBoardModel | selectedBoard = selectedBoard }
+
+                        ( activityModel, cmd, message ) =
+                            Activity.update msg model.activity
+                    in
+                        ( { model | boards = newBoards, trelloBoard = updatedTrelloBoard, activities = newActivities, activity = activityModel, message = message }
+                        , Cmd.none
+                        )
+
                 _ ->
                     let
                         ( activityModel, cmd, message ) =
@@ -674,13 +827,13 @@ port trelloAuthorized : (String -> msg) -> Sub msg
 port boardsLoaded : (List TrelloBoard -> msg) -> Sub msg
 
 
-port listsLoaded : (TrelloListPlusBoardId -> msg) -> Sub msg
+port listsLoaded : (List TrelloList -> msg) -> Sub msg
 
 
 port labelsLoaded : (TrelloLabelPlusBoardId -> msg) -> Sub msg
 
 
-port cardLoaded : (TrelloCardPlusListIdPlusBoardId -> msg) -> Sub msg
+port cardLoaded : (TrelloCard -> msg) -> Sub msg
 
 
 port actualDateLoaded : (String -> msg) -> Sub msg

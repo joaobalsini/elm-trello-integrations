@@ -5,7 +5,7 @@ import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Message exposing (..)
 import Routes exposing (..)
-import Aliases exposing (Activity, ActivityGroup, initActivity, FieldError, TrelloCard, initTrelloCard, TrelloBoard, TrelloList)
+import Aliases exposing (..)
 import Date exposing (..)
 import Date.Extra as DateExtra
 import Regex
@@ -91,7 +91,10 @@ port removeActivity : Activity -> Cmd msg
 port updateActivity : Activity -> Cmd msg
 
 
-port addTrelloCard : TrelloCard -> Cmd msg
+port addTrelloCard : TrelloCardPlusListIdPlusActivityId -> Cmd msg
+
+
+port removeTrelloCard : TrelloCard -> Cmd msg
 
 
 type Msg
@@ -115,6 +118,8 @@ type Msg
     | TrelloCardFormActivityIdInput String
     | TrelloCardFormCancel
     | TrelloCardAdded TrelloCard
+    | RemoveTrelloCard TrelloCard
+    | TrelloCardRemoved TrelloCard
 
 
 parseDate : String -> Maybe Date
@@ -381,7 +386,7 @@ update msg model =
                     if showError then
                         ( { model3 | trelloCardFormShowErrorPanel = True }, Cmd.none )
                     else
-                        ( { initModel | waitingServerConfirmation = True }, addTrelloCard model.trelloCard )
+                        ( { initModel | waitingServerConfirmation = True }, addTrelloCard { trelloCard = model.trelloCard, listId = model3.trelloCardFormListId, activityId = model3.trelloCardFormActivityId } )
             in
                 ( updatedModel, cmd, initMessage )
 
@@ -429,6 +434,19 @@ update msg model =
                 message =
                     if model.waitingServerConfirmation then
                         Message.successMessage "TrelloCard successfully added"
+                    else
+                        initMessage
+            in
+                ( model, Cmd.none, message )
+
+        RemoveTrelloCard trelloCard ->
+            ( { model | waitingServerConfirmation = True }, removeTrelloCard trelloCard, initMessage )
+
+        TrelloCardRemoved trelloCard ->
+            let
+                message =
+                    if model.waitingServerConfirmation then
+                        Message.successMessage "TrelloCard successfully removed"
                     else
                         initMessage
             in
@@ -593,7 +611,11 @@ trelloCardsToUl selectedBoard trelloCards activity =
 
 trelloCardtoLi : TrelloCard -> Html Msg
 trelloCardtoLi trelloCard =
-    li [] [ text trelloCard.name ]
+    li []
+        [ text trelloCard.name
+        , button [ class "ui icon button compact circular", onClick (RemoveTrelloCard trelloCard) ]
+            [ i [ class "remove  icon" ] [] ]
+        ]
 
 
 activityForm : Model -> List ActivityGroup -> Html Msg
@@ -699,7 +721,7 @@ trelloCardForm model selectedBoard activities =
                             [ classList
                                 [ ( "field", True ), ( "error", model.trelloCardFormActivityIdError /= Nothing ) ]
                             ]
-                            [ label [] [ text "List" ]
+                            [ label [] [ text "Part of activity" ]
                               --                 [ select [ onInput SetDuration ]
                               --  (List.range 0 12 |> List.map intToOption)
                             , select [ onInput TrelloCardFormActivityIdInput, value model.trelloCardFormActivityId ]
@@ -788,6 +810,9 @@ port activityRemoved : (String -> msg) -> Sub msg
 port trelloCardAdded : (TrelloCard -> msg) -> Sub msg
 
 
+port trelloCardRemoved : (TrelloCard -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
@@ -795,4 +820,5 @@ subscriptions model =
         , activityUpdated ActivityUpdated
         , activityRemoved ActivityRemoved
         , trelloCardAdded TrelloCardAdded
+        , trelloCardRemoved TrelloCardRemoved
         ]
