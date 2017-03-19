@@ -6,7 +6,8 @@
 
 **There are many use cases for this. For example, what if an app wants to use a trello board as a LOW LEVEL management resource and an ELM APP as a HIGH LEVEL management resoure. For example, in planning, one can create a big task in elm and create subtasks in trello. It would be useful if, and only if, we can automate stuff.
 
-** Please view the video to see what this app does: http://recordit.co/ao478UJaUp **
+** Part1 - see board, lists, cards and filter by label: http://recordit.co/ao478UJaUp **
+** Part2 - create and remove trelo cards from the system as parts of a given activity: http://recordit.co/tstorsSzsH **
 
 **Task list**
 - [x] Create Basic interface for showing cards data (maybe as cards also)
@@ -19,7 +20,7 @@
 - [x] Define strategy for integration
 - [x] Show card - detailed information
 - [x] Show card - attachments
-- [ ] Create cards in elm directly to the trello board
+- [x] Create and remove cards in system
 - [ ] Cards sync 1 - save cards actual state in database
 - [ ] Cards sync 2 - detect updated cards and create action to update some or all cards (app database)
 - [ ] Cards sync 3 - detect deleted cards and create action to delete (local database) or restore
